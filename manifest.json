@@ -1,0 +1,61 @@
+{
+  "manifest_version": 3,
+  "name": "Casto Tools",
+  "description": "Suite d'outils Castorama unifiée pour les workflows magasin.",
+  "version": "1.0.0",
+  "permissions": [
+    "storage",
+    "webRequest",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://dc.kfplc.com/*",
+    "*://dc.dps.kd.kfplc.com/*",
+    "*://prod-agent.castorama.fr/*",
+    "*://bo.production.colisweb.com/*",
+    "*://api.production.colisweb.com/*",
+    "*://agile.intranet.castosav.castorama.fr:8080/*",
+    "*://squareclock-internal-sqc-production.k8s.ap.digikfplc.com/*",
+    "*://script.google.com/*",
+    "*://script.googleusercontent.com/*",
+    "*://api.kingfisher.com/*",
+    "*://geocode.maps.co/*",
+    "*://eegserver1502.frca.kfplc.com:3333/*"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Casto Tools",
+    "default_popup": "src/popup/popup.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "lib/chart.umd.min.js",
+        "src/modules/*/*.js",
+        "src/shared/*.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://dc.kfplc.com/*",
+        "*://prod-agent.castorama.fr/*",
+        "*://bo.production.colisweb.com/*",
+        "*://agile.intranet.castosav.castorama.fr:8080/*",
+        "*://squareclock-internal-sqc-production.k8s.ap.digikfplc.com/*"
+      ],
+      "js": [
+        "src/content-entry.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
