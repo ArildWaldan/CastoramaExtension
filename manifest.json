@@ -22,6 +22,7 @@
     "*://api.kingfisher.com/*",
     "*://geocode.maps.co/*",
     "*://eegserver1502.frca.kfplc.com/*"
+
   ],
   "background": {
     "service_worker": "src/background/service-worker.js",
@@ -49,7 +50,8 @@
         "*://dc.kfplc.com/*",
         "*://prod-agent.castorama.fr/*",
         "*://bo.production.colisweb.com/*",
-        "*://agile.intranet.castosav.castorama.fr/*",
+       "*://agile.intranet.castosav.castorama.fr/*",
+
         "*://squareclock-internal-sqc-production.k8s.ap.digikfplc.com/*"
       ],
       "js": [
