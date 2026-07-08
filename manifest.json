@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Casto Tools",
+  "version": "0.1.0",
+  "description": "Boîte à outils Castorama : fonctionnalités additionnelles injectées dans les outils internes (Com+, Agent, …), activables module par module.",
+  "minimum_chrome_version": "110",
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "32": "assets/icons/icon32.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Casto Tools",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "32": "assets/icons/icon32.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "permissions": [
+    "storage",
+    "webRequest",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "host_permissions": [
+    "https://dc.kfplc.com/*",
+    "https://prod-agent.castorama.fr/*",
+    "https://dc.dps.kd.kfplc.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://dc.kfplc.com/*"],
+      "js": [
+        "core/storage.js",
+        "core/modules.js",
+        "core/runtime.js",
+        "modules/order-lifecycle/content.js"
+      ],
+      "css": [
+        "core/branding.css",
+        "modules/order-lifecycle/styles.css"
+      ],
+      "run_at": "document_end"
+    }
+  ]
+}

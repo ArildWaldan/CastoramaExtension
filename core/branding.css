@@ -1,0 +1,71 @@
+/* Casto Tools — jetons de design partagés (branding Castorama).
+   Tout élément d'UI injecté par un module porte la classe .casto-ui,
+   la popup de l'extension aussi : un seul endroit pour ajuster la charte. */
+
+.casto-ui {
+  --casto-blue: #0d6db8;        /* bleu Castorama (logo, actions) */
+  --casto-blue-dark: #0a568f;   /* hover / bandeaux */
+  --casto-blue-deep: #063a61;   /* titres */
+  --casto-yellow: #ffdd00;      /* jaune Castorama (accent, CTA) */
+  --casto-yellow-dark: #f0cf00;
+
+  --casto-text: #26303a;
+  --casto-text-muted: #6b7a89;
+  --casto-bg: #ffffff;
+  --casto-bg-soft: #f4f7fa;
+  --casto-border: #dfe6ec;
+
+  --casto-green: #1e8a3c;
+  --casto-green-bg: #e3f5e9;
+  --casto-orange: #c47a12;
+  --casto-orange-bg: #fdf1de;
+  --casto-red: #c0392b;
+  --casto-red-bg: #fdeaea;
+  --casto-purple: #6a4fb8;
+  --casto-purple-bg: #efeafc;
+  --casto-radius: 6px;
+  --casto-shadow: 0 6px 24px rgba(6, 58, 97, 0.18);
+
+  font-family: "Roboto", "Segoe UI", Arial, sans-serif;
+  color: var(--casto-text);
+  box-sizing: border-box;
+}
+
+.casto-ui *,
+.casto-ui *::before,
+.casto-ui *::after {
+  box-sizing: border-box;
+}
+
+/* Boutons génériques */
+.casto-ui .casto-btn {
+  border: none;
+  border-radius: var(--casto-radius);
+  padding: 10px 16px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.casto-ui .casto-btn-primary {
+  background: var(--casto-blue);
+  color: #fff;
+}
+.casto-ui .casto-btn-primary:hover {
+  background: var(--casto-blue-dark);
+}
+.casto-ui .casto-btn-accent {
+  background: var(--casto-yellow);
+  color: #1a1a1a;
+}
+.casto-ui .casto-btn-accent:hover {
+  background: var(--casto-yellow-dark);
+}
+.casto-ui .casto-btn-ghost {
+  background: var(--casto-bg-soft);
+  color: var(--casto-text);
+  border: 1px solid var(--casto-border);
+}
+.casto-ui .casto-btn-ghost:hover {
+  background: #e8eef3;
+}

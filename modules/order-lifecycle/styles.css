@@ -1,0 +1,177 @@
+/* Casto Tools — Suivi de commande : styles (charte Castorama, cf. core/branding.css).
+   Remplace le GM_addStyle du userscript ; sélecteurs et structure conservés. */
+
+#lc-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(6, 58, 97, 0.55);
+  z-index: 10000;
+  display: none;
+}
+
+#lc-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--casto-bg);
+  color: var(--casto-text);
+  border: 1px solid var(--casto-border);
+  border-top: 4px solid var(--casto-blue);
+  box-shadow: var(--casto-shadow);
+  z-index: 10001;
+  padding: 20px;
+  width: 820px;
+  max-width: 94vw;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+}
+
+#lc-popup h3 {
+  margin: 0 0 15px;
+  color: var(--casto-blue-deep);
+  text-align: center;
+  border-bottom: 1px solid var(--casto-border);
+  padding-bottom: 15px;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+#lc-popup h3 .lc-brand-dash {
+  display: inline-block;
+  width: 26px;
+  height: 9px;
+  border-radius: 5px;
+  background: var(--casto-yellow);
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+#lc-popup .input-area { display: flex; margin-bottom: 16px; }
+#lc-popup .input-area input {
+  flex: 1;
+  padding: 10px 12px;
+  background: var(--casto-bg-soft);
+  color: var(--casto-text);
+  border: 1px solid var(--casto-border);
+  border-radius: var(--casto-radius);
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+#lc-popup .input-area input:focus {
+  outline: none;
+  border-color: var(--casto-blue);
+  background: #fff;
+}
+#lc-popup .input-area button { margin-left: 10px; }
+#lc-popup #lc-close-btn { margin-top: 16px; }
+
+#lc-orders {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lc-card {
+  background: var(--casto-bg-soft);
+  border: 1px solid var(--casto-border);
+  border-radius: var(--casto-radius);
+  padding: 14px 16px;
+}
+.lc-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lc-card-head .lc-title { font-weight: 700; color: var(--casto-blue-deep); font-size: 1rem; }
+.lc-card-head .lc-supplier { color: var(--casto-text-muted); font-size: 0.85rem; }
+
+.lc-badge { padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+.lc-badge.wait    { background: #fff8cc; color: #8a7400; }
+.lc-badge.created { background: #e0eefb; color: var(--casto-blue-dark); }
+.lc-badge.asn     { background: var(--casto-purple-bg); color: var(--casto-purple); }
+.lc-badge.transit { background: var(--casto-orange-bg); color: var(--casto-orange); }
+.lc-badge.done    { background: var(--casto-green-bg); color: var(--casto-green); }
+.lc-badge.err     { background: var(--casto-red-bg); color: var(--casto-red); }
+.lc-badge.auth    { background: #fdebd7; color: #a35a00; }
+.lc-badge.check   { background: #e9edf1; color: var(--casto-text-muted); font-style: italic; }
+
+.lc-sap { font-size: 0.85rem; color: var(--casto-text-muted); margin-bottom: 10px; }
+.lc-sap strong { color: var(--casto-blue); cursor: pointer; text-decoration: underline dotted; }
+
+.lc-timeline { list-style: none; margin: 0; padding: 0 0 0 10px; border-left: 2px solid var(--casto-border); }
+.lc-timeline li { position: relative; padding: 4px 0 4px 18px; font-size: 0.88rem; }
+.lc-timeline li::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 11px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--casto-border);
+}
+.lc-timeline li.s1::before { background: var(--casto-blue); }
+.lc-timeline li.s2::before { background: var(--casto-purple); }
+.lc-timeline li.s3::before { background: var(--casto-orange); }
+.lc-timeline li.s4::before { background: var(--casto-green); }
+.lc-timeline .lc-date { color: var(--casto-text-muted); margin-left: 6px; font-size: 0.8rem; }
+.lc-timeline .lc-doc  { color: var(--casto-text-muted); margin-left: 6px; font-size: 0.8rem; }
+
+.lc-no-event { color: var(--casto-text-muted); font-size: 0.85rem; }
+
+.lc-card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: var(--casto-text-muted);
+}
+.lc-del { cursor: pointer; color: var(--casto-red); font-weight: bold; }
+.lc-del:hover { color: #8f2a20; }
+.lc-refresh { cursor: pointer; color: var(--casto-blue); margin-right: 12px; }
+.lc-refresh:hover { color: var(--casto-blue-dark); }
+.lc-empty { text-align: center; color: var(--casto-text-muted); padding: 30px 0; }
+
+.lc-notif {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: var(--casto-shadow);
+  z-index: 10002;
+  padding: 25px 30px;
+  text-align: center;
+  border-radius: 8px;
+  min-width: 380px;
+  background: var(--casto-bg);
+  color: var(--casto-text);
+  border: 1px solid var(--casto-border);
+  border-top: 4px solid var(--casto-yellow);
+}
+.lc-notif h4 { margin: 0 0 15px; font-size: 1.3rem; font-weight: 700; color: var(--casto-blue-deep); }
+.lc-notif p { margin: 0 0 10px; line-height: 1.6; }
+.lc-notif button { margin-top: 15px; }
+
+/* Entrée de menu injectée dans Com+ : doit se fondre dans le menu hôte (sombre),
+   on garde donc le style du userscript plutôt que la charte claire. */
+#lc-menu-item a {
+  padding: 0.875rem 1rem 0.875rem 0.75rem;
+  display: block;
+  font-weight: 500;
+  color: #fff;
+  text-decoration: none;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+#lc-menu-item a:hover { background: #1a3245; }
