@@ -10,9 +10,9 @@ const CASTO_MODULES = [
   {
     id: 'order-lifecycle',
     name: 'Suivi de commande — Cycle de vie',
-    description: "Suivi du cycle de vie des commandes fournisseur (Cde achat → ASN → Transit → Réception) via l'API Agent, avec timeline et notifications d'évolution.",
-    version: '1.3.0',
-    hosts: ['dc.kfplc.com'],
+    description: "Suivi du cycle de vie des commandes fournisseur (Cde achat → ASN → Transit → Réception) via l'API Agent, avec timeline et notifications d'évolution. Bouton intégré à la page d'accueil Com+ (bloc Commandes).",
+    version: '1.4.0',
+    hosts: ['prod-agent.castorama.fr'],
     defaultEnabled: true
   }
 ];
