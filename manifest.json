@@ -29,13 +29,12 @@
     "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
-    "https://dc.kfplc.com/*",
     "https://prod-agent.castorama.fr/*",
     "https://dc.dps.kd.kfplc.com/*"
   ],
   "content_scripts": [
     {
-      "matches": ["https://dc.kfplc.com/*"],
+      "matches": ["https://prod-agent.castorama.fr/*"],
       "js": [
         "core/storage.js",
         "core/modules.js",

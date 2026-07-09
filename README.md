@@ -52,14 +52,18 @@ tools/
 
 ## Modules
 
-### Suivi de commande — Cycle de vie (`order-lifecycle`, v1.3.0)
+### Suivi de commande — Cycle de vie (`order-lifecycle`, v1.4.0)
 
-Port 1:1 du userscript éponyme : suivi du cycle de vie des commandes fournisseur (**Cde achat → ASN → Transit → Réception**) via l'API Agent, timeline en français, notifications d'évolution, entrée « Suivi de commande » injectée dans le menu Com+ (`dc.kfplc.com`).
+Suivi du cycle de vie des commandes fournisseur (**Cde achat → ASN → Transit → Réception**) via l'API Agent, timeline en français, notifications d'évolution.
 
-Notes de portage :
-- Logique métier inchangée (parsing du tableau « Suivi de commande », classification des étapes, détection de session Com+ expirée, workflow de re-check toutes les 15 min).
-- Les données suivies restent sous la clé `lifecycleOrders_kfplc`, mais dans `chrome.storage.local` : la liste des commandes suivies dans Tampermonkey **n'est pas migrée** automatiquement.
-- L'UI reprend la charte Castorama (thème clair bleu/jaune) au lieu du thème sombre du userscript ; structure et comportements identiques.
+Depuis la v1.4.0 le module tourne **directement sur Com+** (`prod-agent.castorama.fr`, agent-front) — là où les commandes sont gérées — et non plus sur `dc.kfplc.com` :
+- un bouton **« Suivi de commande »** est injecté dans le bloc « Commandes / N° de dossier » de la page d'accueil agent (`main.jsp`), en dernier enfant du bloc, avec les classes natives `btn btn-primary` de l'appli ;
+- l'UI du panneau reprend les jetons de design d'agent-front (Arial, bleu `rgb(0,120,215)`, bordures `rgb(0,92,202)`, radius 5px, corps 12px) via une surcharge locale des variables de `core/branding.css` (cf. `modules/order-lifecycle/styles.css`).
+
+Notes :
+- Logique métier inchangée (parsing du tableau « Suivi de commande », classification des étapes, détection de session expirée, workflow de re-check toutes les 15 min).
+- Les données suivies restent sous la clé `lifecycleOrders_kfplc` dans `chrome.storage.local` : rien à migrer lors du passage 1.3 → 1.4.
+- Comme le module vit désormais sur prod-agent, les en-têtes d'authentification Agent sont capturés dès la navigation normale sur Com+.
 
 ## Permissions demandées
 
@@ -68,4 +72,4 @@ Notes de portage :
 | `storage` | Persistance des commandes suivies, de l'état des modules et des en-têtes capturés |
 | `webRequest` | Capture passive des en-têtes d'authentification vers les API internes |
 | `declarativeNetRequestWithHostAccess` | Pose d'`Origin`/`Referer` sur les requêtes émises par l'extension (hôtes autorisés uniquement) |
-| `host_permissions` | `dc.kfplc.com`, `prod-agent.castorama.fr`, `dc.dps.kd.kfplc.com` — injection et appels API |
+| `host_permissions` | `prod-agent.castorama.fr`, `dc.dps.kd.kfplc.com` — injection et appels API |

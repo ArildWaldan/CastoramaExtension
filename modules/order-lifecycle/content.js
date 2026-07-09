@@ -1,9 +1,14 @@
-// Casto Tools — module « Suivi de commande — Cycle de vie » (v1.3.0)
-// Port 1:1 du userscript Tampermonkey éponyme :
-//   Cde achat → ASN → Transit → Réception, via l'API Agent, timeline FR,
-//   notifications d'évolution, injection d'une entrée de menu dans Com+.
+// Casto Tools — module « Suivi de commande — Cycle de vie » (v1.4.0)
+// Cde achat → ASN → Transit → Réception, via l'API Agent, timeline FR,
+// notifications d'évolution.
 //
-// Différences avec le userscript (voir README) :
+// Depuis la v1.4.0 le module tourne directement sur Com+
+// (prod-agent.castorama.fr, agent-front) — là où les commandes sont gérées —
+// au lieu de dc.kfplc.com : un bouton « Suivi de commande » est injecté dans
+// le bloc « Commandes / N° de dossier » de la page d'accueil agent (main.jsp),
+// et l'UI du panneau reprend les styles natifs de l'appli (cf. styles.css).
+//
+// Différences avec le userscript d'origine (voir README) :
 //   - GM_get/setValue          → chrome.storage.local (core/storage.js)
 //   - GM_xmlhttpRequest        → proxy du service worker (CastoTools.request)
 //   - hook XHR de capture auth → chrome.webRequest dans le service worker
@@ -18,7 +23,9 @@
     const STORAGE_KEY = 'lifecycleOrders_kfplc';
     const CHECK_INTERVAL_MS = 5 * 60 * 1000;      // boucle de vérification
     const RECHECK_THRESHOLD_MS = 15 * 60 * 1000;  // re-check d'une commande au plus toutes les 15 min
-    const BULLETIN_DE_VENTE_LI_SELECTOR = 'li:has(a[data-auto="menu-dropdown-core.menu.titles.orders-core.menu.titles.basket"])';
+    // Bloc « Commandes / N° de dossier » de la page d'accueil agent (main.jsp) :
+    // point d'ancrage du bouton « Suivi de commande » (cf. spec d'intégration).
+    const ORDER_PANEL_SELECTOR = '.col2.start-panel.js-view-order';
 
     let trackedOrders = [];
     let mainPopup = null;
@@ -369,7 +376,7 @@
                 <h3><span class="lc-brand-dash"></span>Suivi de commande — Cycle de vie</h3>
                 <div class="input-area">
                     <input type="text" id="lc-order-input" placeholder="Entrer numéro de commande...">
-                    <button id="lc-add-btn" class="casto-btn casto-btn-accent">Suivre</button>
+                    <button id="lc-add-btn" class="casto-btn casto-btn-primary">Suivre</button>
                 </div>
                 <div id="lc-orders"></div>
                 <button id="lc-close-btn" class="casto-btn casto-btn-ghost">Fermer</button>
@@ -478,39 +485,39 @@
     }
 
     // -----------------------------
-    // MENU INJECTION
+    // INJECTION DU BOUTON (page d'accueil agent)
     // -----------------------------
-    function injectMenuItem() {
-        if (document.getElementById('lc-menu-item')) return;
-        const referenceLi = document.querySelector(BULLETIN_DE_VENTE_LI_SELECTOR);
-        if (referenceLi) {
-            const newLi = document.createElement('li');
-            newLi.id = 'lc-menu-item';
-            const a = document.createElement('a');
-            a.href = "#";
-            a.textContent = "Suivi de commande";
-            a.addEventListener('click', (e) => { e.preventDefault(); toggleMainPopup(); });
-            newLi.appendChild(a);
-            referenceLi.parentNode.insertBefore(newLi, referenceLi.nextSibling);
-        }
+    // Ajouté en dernier enfant du bloc « Commandes / N° de dossier », après le
+    // <ul class="arrow-list-inline"> (« Recherche avancée »), pour rester
+    // visuellement rattaché au bloc. Réutilise les classes natives de l'appli
+    // (btn btn-primary) plutôt que du CSS custom.
+    function injectTrackButton() {
+        if (document.getElementById('track-order-btn')) return true;
+        const panel = document.querySelector(ORDER_PANEL_SELECTOR);
+        if (!panel) return false;
+        panel.insertAdjacentHTML('beforeend', `
+            <div class="tracking-feature">
+                <a href="#" class="btn btn-primary js-track-order" id="track-order-btn">
+                    Suivi de commande
+                </a>
+            </div>
+        `);
+        document.getElementById('track-order-btn')
+            .addEventListener('click', (e) => { e.preventDefault(); toggleMainPopup(); });
+        return true;
     }
 
-    let observerAttached = false;
-    const menuObserver = new MutationObserver((mut, obs) => {
-        if (document.querySelector(BULLETIN_DE_VENTE_LI_SELECTOR) && !document.getElementById('lc-menu-item')) {
-            injectMenuItem(); obs.disconnect(); observerAttached = false;
-        } else if (document.getElementById('lc-menu-item')) { obs.disconnect(); observerAttached = false; }
-    });
-
-    function attemptAttachMenuObserver() {
-        const menuContainer = document.getElementById('menu');
-        if (menuContainer) {
-            menuObserver.observe(menuContainer, { childList: true, subtree: true });
-            observerAttached = true;
-            setTimeout(() => {
-                if (observerAttached) { injectMenuItem(); menuObserver.disconnect(); observerAttached = false; }
-            }, 5000);
-        } else setTimeout(attemptAttachMenuObserver, 1000);
+    // main.jsp est rendue côté serveur : le bloc est en général déjà là au
+    // document_end. On garde néanmoins un observer borné dans le temps au cas
+    // où la zone d'accueil serait (re)construite en JS. Sur les autres pages
+    // agent, le bloc n'existe pas : on abandonne au bout du délai.
+    function attemptInjectTrackButton() {
+        if (injectTrackButton()) return;
+        const observer = new MutationObserver(() => {
+            if (injectTrackButton()) observer.disconnect();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        setTimeout(() => observer.disconnect(), 10000);
     }
 
     // -----------------------------
@@ -528,8 +535,8 @@
         });
 
         setInterval(periodicCheck, CHECK_INTERVAL_MS);
-        attemptAttachMenuObserver();
-        console.log("[Casto Tools · Suivi] Cycle de vie des commandes v1.3.0 initialisé.");
+        attemptInjectTrackButton();
+        console.log("[Casto Tools · Suivi] Cycle de vie des commandes v1.4.0 initialisé.");
         if (!(await hasAgentHeaders())) console.warn('[Casto Tools · Suivi] En attente de capture prod-agent. Interagissez avec l’Agent si nécessaire.');
     }
 
