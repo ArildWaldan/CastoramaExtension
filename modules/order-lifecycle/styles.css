@@ -144,8 +144,24 @@
 .lc-card-head .lc-title { font-weight: 700; color: var(--casto-blue-deep); font-size: 14px; }
 .lc-card-head .lc-supplier { color: var(--casto-text-muted); font-size: 12px; }
 
+/* Lignes discrètes d'une commande : chaque article a son en-tête, son badge
+   et sa timeline propres */
+.lc-item { border-top: 1px dashed var(--casto-border); padding-top: 8px; margin-top: 8px; }
+.lc-item:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+.lc-item-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.lc-item-name { font-weight: 700; font-size: 12px; color: var(--casto-text); flex: 1; min-width: 40%; }
+.lc-item-meta { color: var(--casto-text-muted); font-size: 11px; }
+
 .lc-badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
 .lc-badge.wait    { background: #fff8cc; color: #8a7400; }
+.lc-badge.partial { background: #d8efe7; color: #14684f; }
+.lc-badge.multi   { background: #e8eef5; color: #31506b; }
 .lc-badge.created { background: #e0eefb; color: var(--casto-blue-dark); }
 .lc-badge.asn     { background: var(--casto-purple-bg); color: var(--casto-purple); }
 .lc-badge.transit { background: var(--casto-orange-bg); color: var(--casto-orange); }
@@ -190,6 +206,30 @@
 .lc-del:hover { color: #8f2a20; }
 .lc-refresh { cursor: pointer; color: var(--casto-blue); margin-right: 12px; }
 .lc-refresh:hover { color: var(--casto-blue-dark); }
+.lc-note-btn { cursor: pointer; color: var(--casto-blue); margin-right: 12px; }
+.lc-note-btn:hover { color: var(--casto-blue-dark); }
+
+/* Note manuelle (post-it) et son éditeur inline */
+.lc-note {
+  background: #fff8cc;
+  border: 1px solid #f0e2a0;
+  border-radius: var(--casto-radius);
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #6b5900;
+  margin-bottom: 10px;
+}
+.lc-note-editor { display: flex; gap: 8px; margin-bottom: 10px; }
+.lc-note-editor input {
+  flex: 1;
+  padding: 7px 10px;
+  height: 30px;
+  border: 1px solid var(--casto-border);
+  border-radius: var(--casto-radius);
+  font-size: 12px;
+  font-family: inherit;
+}
+.lc-note-editor input:focus { outline: none; border-color: var(--casto-blue); }
 .lc-empty { text-align: center; color: var(--casto-text-muted); padding: 30px 0; }
 
 .lc-notif {
@@ -210,4 +250,5 @@
 }
 .lc-notif h4 { margin: 0 0 15px; font-size: 16px; font-weight: 700; color: var(--casto-blue-deep); }
 .lc-notif p { margin: 0 0 10px; line-height: 1.6; }
+.lc-notif .lc-notif-item { color: var(--casto-text-muted); font-style: italic; }
 .lc-notif button { margin-top: 15px; }

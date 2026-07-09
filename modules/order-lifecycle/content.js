@@ -1,4 +1,4 @@
-// Casto Tools — module « Suivi de commande — Cycle de vie » (v1.4.0)
+// Casto Tools — module « Suivi de commande » (v1.6.0)
 // Cde achat → ASN → Transit → Réception, via l'API Agent, timeline FR,
 // notifications d'évolution.
 //
@@ -116,9 +116,14 @@
     }
 
     // -----------------------------
-    // ÉTAPE 2 — parser TOUT le tableau "Suivi de commande"
+    // ÉTAPE 2 — parser la page commande, LIGNE PAR LIGNE
     // -----------------------------
-    // Renvoie une liste d'événements : { docNumber, fournisseurNo, type, dateStr, qty, statut, supplier }
+    // Une commande peut avoir plusieurs lignes (articles) qui avancent chacune
+    // à leur rythme (l'une réceptionnée, l'autre bloquée chez le fournisseur).
+    // Chaque ligne est un <tr label="..."> dont le flyout « Suivi de
+    // commande » contient les événements propres à la ligne. On renvoie donc
+    // des items discrets : { key, line, name, ean, qty, route, supplier,
+    // events }, plus le nom du client.
     function fetchOrderEvents(atgOrderId) {
         const url = `https://prod-agent.castorama.fr/agent-front/jsp/customer/order.jsp?orderId=${atgOrderId}`;
         return tryWithAuthValidate(() => agentRequest({
@@ -130,7 +135,7 @@
             if (isAuthProblem(response)) throw authError(2);
             if (response.status < 200 || response.status >= 300) throw new Error(`Erreur API (étape 2) status ${response.status}`);
             return {
-                events: parseSuiviTables(response.responseText),
+                items: parseOrderItems(response.responseText),
                 clientName: parseClientName(response.responseText)
             };
         });
@@ -160,79 +165,139 @@
         return grab('displayName');
     }
 
-    // Parse le HTML : trouve chaque tableau dont l'en-tête contient "N° document"
-    // et récupère le nom fournisseur (heading juste avant le tableau, ex. "CETIH ROANNE") si présent.
-    function parseSuiviTables(html) {
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        const events = [];
-        const seen = new Set(); // anti-doublons
+    // Un tableau d'événements de suivi se reconnaît à ses en-têtes.
+    function isSuiviTable(table) {
+        const t = table.textContent || '';
+        return /N°\s*document/i.test(t) && /Type de document/i.test(t);
+    }
 
-        // On ne garde que les tableaux "feuilles" : ceux qui ne contiennent PAS
-        // eux-mêmes un autre tableau correspondant (évite de lire 2x les tables imbriquées)
-        let tables = Array.from(doc.querySelectorAll('table')).filter(t => {
-            const headText = t.textContent || '';
-            return /N°\s*document/i.test(headText) && /Type de document/i.test(headText);
+    // Parse UN tableau « Suivi de commande » (colonnes pilotées par les
+    // en-têtes : la 2e colonne est « Fournisseur no » ou « Entrepôt no »
+    // selon l'origine de la ligne). Alimente `events` en dédoublonnant via
+    // `seen` — les mêmes flyouts sont dupliqués plusieurs fois dans la page.
+    function parseEventTable(table, events, seen) {
+        const headerCells = Array.from(table.querySelectorAll('th'));
+        const colIndex = { doc: -1, fournisseur: -1, type: -1, date: -1, qty: -1, statut: -1 };
+        headerCells.forEach((th, i) => {
+            const t = (th.textContent || '').toLowerCase();
+            if (t.includes('document') && t.includes('n°')) colIndex.doc = i;
+            else if (t.includes('fournisseur') || t.includes('entrepôt') || t.includes('entrepot')) colIndex.fournisseur = i;
+            else if (t.includes('type')) colIndex.type = i;
+            else if (t.includes('date')) colIndex.date = i;
+            else if (t.includes('qté') || t.includes('qte') || t.includes('quantité')) colIndex.qty = i;
+            else if (t.includes('statut')) colIndex.statut = i;
         });
-        tables = tables.filter(t => !tables.some(other => other !== t && t.contains(other)));
 
-        tables.forEach(table => {
-            // Lire les en-têtes pour savoir quelle colonne contient quoi
-            const headerCells = Array.from(table.querySelectorAll('th'));
-            const colIndex = { doc: -1, fournisseur: -1, type: -1, date: -1, qty: -1, statut: -1 };
-            headerCells.forEach((th, i) => {
-                const t = (th.textContent || '').toLowerCase();
-                if (t.includes('document') && t.includes('n°')) colIndex.doc = i;
-                else if (t.includes('fournisseur')) colIndex.fournisseur = i;
-                else if (t.includes('type')) colIndex.type = i;
-                else if (t.includes('date')) colIndex.date = i;
-                else if (t.includes('qté') || t.includes('qte') || t.includes('quantité')) colIndex.qty = i;
-                else if (t.includes('statut')) colIndex.statut = i;
-            });
-            // Fournisseur : on remonte les éléments précédents pour trouver un texte court en majuscules
-            let supplier = '';
-            let prev = table.previousElementSibling;
-            let hops = 0;
-            while (prev && hops < 5) {
-                const txt = (prev.textContent || '').trim();
-                if (txt && txt.length < 60 && !/N°\s*document/i.test(txt) && !/Suivi de commande/i.test(txt)) {
-                    supplier = txt;
-                    break;
+        const rows = Array.from(table.querySelectorAll('tr'))
+            // ne garder que les lignes appartenant directement à CE tableau (pas à un tableau imbriqué)
+            .filter(tr => tr.closest('table') === table)
+            .filter(tr => tr.querySelectorAll('td').length > 0);
+
+        rows.forEach(tr => {
+            const cells = Array.from(tr.querySelectorAll('td'))
+                .filter(td => td.closest('table') === table)
+                .map(td => (td.textContent || '').trim());
+            if (!cells.length) return;
+
+            const pick = (idx, fallbackIdx) => {
+                if (idx >= 0 && idx < cells.length) return cells[idx];
+                return (fallbackIdx >= 0 && fallbackIdx < cells.length) ? cells[fallbackIdx] : '';
+            };
+            const docNumber     = pick(colIndex.doc, 0);
+            const fournisseurNo = pick(colIndex.fournisseur, 1);
+            const type          = pick(colIndex.type, 2);
+            const dateStr       = pick(colIndex.date, 3);
+            const qty           = pick(colIndex.qty, 4);
+            const statut        = pick(colIndex.statut, 5);
+
+            if (!type && !docNumber) return; // ligne vide
+
+            const key = `${docNumber}|${type}|${dateStr}|${statut}`;
+            if (seen.has(key)) return; // doublon → on ignore
+            seen.add(key);
+
+            events.push({ docNumber, fournisseurNo, type, dateStr, qty, statut });
+        });
+    }
+
+    // Découpe la page commande en lignes discrètes. Chaque ligne d'article est
+    // un <tr label="Collection via Store_<EAN>"> (dans le tableau de suivi ET
+    // dans les accordéons par groupe de livraison : on regroupe par label).
+    function parseOrderItems(html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+
+        const rowsByLabel = new Map();
+        doc.querySelectorAll('tr[label]').forEach((tr) => {
+            const label = tr.getAttribute('label');
+            if (!rowsByLabel.has(label)) rowsByLabel.set(label, []);
+            rowsByLabel.get(label).push(tr);
+        });
+
+        const items = [];
+        rowsByLabel.forEach((rows, label) => {
+            const pickText = (sel) => {
+                for (const r of rows) {
+                    const el = r.querySelector(sel);
+                    if (el && (el.textContent || '').trim()) return el.textContent.trim();
                 }
-                prev = prev.previousElementSibling; hops++;
+                return '';
+            };
+            const name = pickText('td.product h4') || pickText('td h4');
+            const ean  = pickText('.js-ean-val') || ((label.match(/_(\d{8,})/) || [])[1] || '');
+            const line = (pickText('td.linenumber') || '').replace(/\D+/g, '');
+            const qty  = pickText('td.quantity');
+
+            // Origine de la ligne : Fournisseur / Entrepôt / Magasin
+            let route = '';
+            outer:
+            for (const r of rows) {
+                for (const td of r.children) {
+                    const t = (td.textContent || '').trim();
+                    if (/^(fournisseur|entrepôt|entrepot|magasin)$/i.test(t)) { route = t; break outer; }
+                }
             }
 
-            const rows = Array.from(table.querySelectorAll('tr'))
-                // ne garder que les lignes appartenant directement à CE tableau (pas à un tableau imbriqué)
-                .filter(tr => tr.closest('table') === table)
-                .filter(tr => tr.querySelectorAll('td').length > 0);
-
-            rows.forEach(tr => {
-                const cells = Array.from(tr.querySelectorAll('td'))
-                    .filter(td => td.closest('table') === table)
-                    .map(td => (td.textContent || '').trim());
-                if (!cells.length) return;
-
-                const pick = (idx, fallbackIdx) => {
-                    if (idx >= 0 && idx < cells.length) return cells[idx];
-                    return (fallbackIdx >= 0 && fallbackIdx < cells.length) ? cells[fallbackIdx] : '';
-                };
-                const docNumber     = pick(colIndex.doc, 0);
-                const fournisseurNo = pick(colIndex.fournisseur, 1);
-                const type          = pick(colIndex.type, 2);
-                const dateStr       = pick(colIndex.date, 3);
-                const qty           = pick(colIndex.qty, 4);
-                const statut        = pick(colIndex.statut, 5);
-
-                if (!type && !docNumber) return; // ligne vide
-
-                const key = `${docNumber}|${type}|${dateStr}|${statut}`;
-                if (seen.has(key)) return; // doublon → on ignore
-                seen.add(key);
-
-                events.push({ docNumber, fournisseurNo, type, dateStr, qty, statut, supplier });
+            // Événements : les tableaux de suivi des flyouts de la ligne
+            // (les flyouts de remise/prix n'ont pas ces en-têtes → ignorés).
+            const events = [];
+            const seen = new Set();
+            let supplier = '';
+            rows.forEach((r) => {
+                r.querySelectorAll('.flyout').forEach((fly) => {
+                    const tables = Array.from(fly.querySelectorAll('table')).filter(isSuiviTable);
+                    if (!tables.length) return;
+                    if (!supplier) {
+                        // Nom du fournisseur : <span> nu avant le tableau (ex. FL CREATION)
+                        const s = fly.querySelector('.flyout-content > span:not([class])');
+                        if (s && (s.textContent || '').trim()) supplier = s.textContent.trim();
+                    }
+                    tables.forEach((t) => parseEventTable(t, events, seen));
+                });
             });
+            if (!supplier) {
+                const fno = (events.find(ev => ev.fournisseurNo) || {}).fournisseurNo || '';
+                supplier = route && fno ? `${route} ${fno}` : route;
+            }
+            events.forEach(ev => { ev.supplier = supplier; });
+
+            items.push({ key: ean || label, line, name, ean, qty, route, supplier, events });
         });
-        return events;
+
+        items.sort((a, b) => (parseInt(a.line, 10) || 0) - (parseInt(b.line, 10) || 0));
+
+        // Fallback : page sans lignes identifiables → ancien parsing global,
+        // la commande entière est traitée comme une ligne unique.
+        if (!items.length) {
+            const events = [];
+            const seen = new Set();
+            let tables = Array.from(doc.querySelectorAll('table')).filter(isSuiviTable);
+            tables = tables.filter(t => !tables.some(other => other !== t && t.contains(other)));
+            tables.forEach(t => parseEventTable(t, events, seen));
+            if (events.length) {
+                items.push({ key: '__order__', line: '', name: '', ean: '', qty: '', route: '', supplier: '', events });
+            }
+        }
+        return items;
     }
 
     // -----------------------------
@@ -242,10 +307,25 @@
         const t = (ev.type || '').toLowerCase();
         if (t.includes('cde achat'))      return { stage: 1, label: 'Commande reçue par le fournisseur', icon: '📝' };
         if (t.includes('asn'))            return { stage: 2, label: 'Expédition annoncée (ASN)',          icon: '📦' };
+        if (t.includes('préparation') || t.includes('preparation'))
+                                          return { stage: 2, label: 'Commande en préparation',            icon: '🏭' };
         if (t.includes('transit'))        return { stage: 3, label: 'Marchandise en transit',             icon: '🚚' };
         if (t.includes('réception') || t.includes('reception'))
                                           return { stage: 4, label: 'Réceptionné en magasin',             icon: '✅' };
         return { stage: 0, label: ev.type || 'Événement', icon: '•' };
+    }
+
+    // Rollup d'UNE ligne : son étape la plus avancée et son statut propre.
+    function rollupItem(item) {
+        const events = item.events || [];
+        const received = events.some(ev => /réception|reception/i.test(ev.type));
+        const highest = events.reduce((mx, ev) => Math.max(mx, classifyEvent(ev).stage), 0);
+        const hasAsn = events.some(ev => /asn/i.test(ev.type));
+        const status = received ? 'Réceptionné ✔' :
+                       highest >= 3 ? 'En transit' :
+                       highest >= 2 ? (hasAsn ? 'Expédié (ASN)' : 'En préparation') :
+                       highest >= 1 ? 'Commande créée' : 'en attente';
+        return { received, highest, status };
     }
 
     // Clé unique d'un événement pour détecter les nouveautés
@@ -264,46 +344,73 @@
         updateOrder(order.orderNumber, { status: "vérification...", lastCheckedTimestamp: Date.now() });
         try {
             const atgOrderId = order.atgOrderId || await fetchAtgOrderId(order.orderNumber);
-            const { events, clientName } = await fetchOrderEvents(atgOrderId);
-
-            const knownKeys = new Set((order.events || []).map(eventKey));
-            const newEvents = events.filter(ev => !knownKeys.has(eventKey(ev)));
+            const { items, clientName } = await fetchOrderEvents(atgOrderId);
+            const allEvents = items.flatMap(it => it.events);
 
             // SAP = premier N° document commençant par 6 sur une ligne "Cde achat"
             let sapNumber = order.sapNumber;
             if (!sapNumber) {
-                const cde = events.find(ev => /cde achat/i.test(ev.type) && /^6\d{5,}/.test(ev.docNumber));
+                const cde = allEvents.find(ev => /cde achat/i.test(ev.type) && /^6\d{5,}/.test(ev.docNumber));
                 if (cde) sapNumber = cde.docNumber;
             }
 
-            const received = events.some(ev => /réception|reception/i.test(ev.type));
-            const highest = events.reduce((mx, ev) => Math.max(mx, classifyEvent(ev).stage), 0);
+            // Rollup par ligne, puis rollup commande : la commande n'est
+            // « Réceptionnée » que si TOUTES ses lignes le sont. Sinon le
+            // statut global suit la ligne la MOINS avancée (le goulot), avec
+            // un état « Partiel » dès qu'une partie seulement est arrivée —
+            // l'ancien rollup prenait l'étape la plus avancée toutes lignes
+            // confondues, ce qui masquait une ligne bloquée.
+            items.forEach(it => {
+                const r = rollupItem(it);
+                it.closed = r.received;
+                it.stage = r.highest;
+                it.status = r.status;
+            });
+            const receivedCount = items.filter(it => it.closed).length;
+            let status, closed = false;
+            if (items.length > 0 && receivedCount === items.length) {
+                status = 'Réceptionné ✔'; closed = true;
+            } else if (receivedCount > 0) {
+                status = `Partiel — ${receivedCount}/${items.length} lignes reçues`;
+            } else if (items.length > 1) {
+                // Plusieurs lignes à des stades différents : pas de statut
+                // global trompeur, les badges par ligne font foi.
+                status = `${items.length} lignes — voir détail`;
+            } else if (items.length === 1) {
+                status = items[0].status;
+            } else {
+                status = 'en attente';
+            }
+
+            const suppliers = [...new Set(items.map(it => it.supplier).filter(Boolean))];
 
             updateOrder(order.orderNumber, {
                 atgOrderId,
-                events,
+                items,
                 sapNumber: sapNumber || null,
-                supplier: events[0]?.supplier || order.supplier || '',
+                supplier: suppliers.join(' · ') || order.supplier || '',
                 clientName: clientName || order.clientName || '',
-                status: received ? "Réceptionné ✔" :
-                        highest >= 3 ? "En transit" :
-                        highest >= 2 ? "Expédié (ASN)" :
-                        highest >= 1 ? "Commande créée" : "en attente",
-                closed: received,
+                status,
+                closed,
                 lastCheckedTimestamp: Date.now()
             });
 
-            // Notification pour chaque étape nouvelle et significative
-            newEvents.forEach(ev => {
-                const c = classifyEvent(ev);
-                if (c.stage > 0 && order.events && order.events.length > 0) {
-                    showNotification(order.orderNumber, c, ev, sapNumber);
-                }
+            // Notification pour chaque étape nouvelle et significative,
+            // ligne par ligne (une ligne déjà connue qui évolue → notif).
+            const prevItems = new Map((order.items || []).map(it => [it.key, it]));
+            items.forEach(it => {
+                const prev = prevItems.get(it.key);
+                if (!prev || !(prev.events || []).length) return; // ligne vue pour la 1re fois
+                const known = new Set(prev.events.map(eventKey));
+                it.events.filter(ev => !known.has(eventKey(ev))).forEach(ev => {
+                    const c = classifyEvent(ev);
+                    if (c.stage > 0) showNotification(order.orderNumber, c, ev, sapNumber, it.name);
+                });
             });
             // Première vérification : notifier seulement si SAP vient d'être trouvé
-            if ((!order.events || order.events.length === 0) && sapNumber && !order.sapNumber) {
+            if (!(order.items || []).length && !(order.events || []).length && sapNumber && !order.sapNumber) {
                 showNotification(order.orderNumber, { stage: 1, label: 'Commande reçue par le fournisseur', icon: '📝' },
-                                 events.find(ev => ev.docNumber === sapNumber) || {}, sapNumber);
+                                 allEvents.find(ev => ev.docNumber === sapNumber) || {}, sapNumber, '');
             }
         } catch (error) {
             console.error(`[Casto Tools · Suivi] Erreur commande ${order.orderNumber}:`, error);
@@ -373,7 +480,7 @@
             mainPopup.className = 'casto-ui';
             mainPopup.style.display = 'none';
             mainPopup.innerHTML = `
-                <h3><span class="lc-brand-dash"></span>Suivi de commande — Cycle de vie</h3>
+                <h3><span class="lc-brand-dash"></span>Suivi de commande</h3>
                 <div class="input-area">
                     <input type="text" id="lc-order-input" placeholder="Entrer numéro de commande...">
                     <button id="lc-add-btn" class="casto-btn casto-btn-primary">Suivre</button>
@@ -390,14 +497,18 @@
         } else mainPopup = document.getElementById('lc-popup');
     }
 
+    // Marche pour une commande comme pour une ligne ({ status, closed }).
     function badgeFor(order) {
         const s = (order.status || '').toLowerCase();
         if (s.includes('vérification')) return ['check', order.status];
         if (s.includes('reconnecter'))  return ['auth', 'Reconnecter Com+'];
         if (s.includes('erreur'))       return ['err', 'Erreur API'];
         if (order.closed)               return ['done', 'Réceptionné ✔'];
+        if (s.includes('partiel'))      return ['partial', order.status];
+        if (s.includes('voir détail'))  return ['multi', order.status];
         if (s.includes('transit'))      return ['transit', 'En transit'];
         if (s.includes('asn') || s.includes('expédié')) return ['asn', 'Expédié (ASN)'];
+        if (s.includes('préparation') || s.includes('preparation')) return ['asn', 'En préparation'];
         if (s.includes('créée'))        return ['created', 'Commande créée'];
         return ['wait', 'En attente'];
     }
@@ -415,21 +526,47 @@
             const card = document.createElement('div');
             card.className = 'lc-card';
 
-            // Timeline triée : par étape puis par date
-            const evts = (order.events || []).slice().sort((a, b) => {
-                const sa = classifyEvent(a).stage, sb = classifyEvent(b).stage;
-                if (sa !== sb) return sa - sb;
-                return parseFrDate(a.dateStr) - parseFrDate(b.dateStr);
-            });
+            const timelineFor = (events) => {
+                // Timeline triée : par étape puis par date
+                const evts = (events || []).slice().sort((a, b) => {
+                    const sa = classifyEvent(a).stage, sb = classifyEvent(b).stage;
+                    if (sa !== sb) return sa - sb;
+                    return parseFrDate(a.dateStr) - parseFrDate(b.dateStr);
+                });
+                return evts.length
+                    ? '<ul class="lc-timeline">' + evts.map(ev => {
+                        const c = classifyEvent(ev);
+                        const doc = ev.docNumber ? `<span class="lc-doc">n° ${ev.docNumber}</span>` : '';
+                        const date = ev.dateStr ? `<span class="lc-date">${ev.dateStr}</span>` : '';
+                        const st = ev.statut ? ` — ${ev.statut}` : '';
+                        return `<li class="s${c.stage}">${c.icon} ${c.label}${st}${date}${doc}</li>`;
+                      }).join('') + '</ul>'
+                    : '<div class="lc-no-event">Aucun événement pour l’instant.</div>';
+            };
 
-            const timelineHtml = evts.length
-                ? '<ul class="lc-timeline">' + evts.map(ev => {
-                    const c = classifyEvent(ev);
-                    const doc = ev.docNumber ? `<span class="lc-doc">n° ${ev.docNumber}</span>` : '';
-                    const date = ev.dateStr ? `<span class="lc-date">${ev.dateStr}</span>` : '';
-                    const st = ev.statut ? ` — ${ev.statut}` : '';
-                    return `<li class="s${c.stage}">${c.icon} ${c.label}${st}${date}${doc}</li>`;
-                  }).join('') + '</ul>'
+            // Lignes discrètes (≥ v1.5) ; les commandes stockées avant ont
+            // encore leurs événements à plat → ligne unique sans en-tête.
+            const items = (order.items && order.items.length) ? order.items
+                : (order.events && order.events.length)
+                    ? [{ name: '', events: order.events, status: order.status, closed: order.closed }]
+                    : [];
+
+            const itemsHtml = items.length
+                ? items.map(it => {
+                    let head = '';
+                    if (it.name || items.length > 1) {
+                        const [icls, itxt] = badgeFor(it);
+                        const meta = [it.ean ? `EAN ${it.ean}` : '', it.qty ? `Qté ${it.qty}` : '', it.supplier || '']
+                            .filter(Boolean).join(' · ');
+                        head = `
+                            <div class="lc-item-head">
+                                <span class="lc-item-name">${it.line ? `${it.line}. ` : ''}${it.name || 'Ligne'}</span>
+                                ${meta ? `<span class="lc-item-meta">${meta}</span>` : ''}
+                                <span class="lc-badge ${icls}">${itxt}</span>
+                            </div>`;
+                    }
+                    return `<div class="lc-item">${head}${timelineFor(it.events)}</div>`;
+                  }).join('')
                 : '<div class="lc-no-event">Aucun événement pour l’instant.</div>';
 
             card.innerHTML = `
@@ -438,23 +575,53 @@
                     <span class="lc-supplier">${order.clientName ? `👤 ${order.clientName}` : ''}${order.clientName && order.supplier ? ' · ' : ''}${order.supplier || ''}</span>
                     <span class="lc-badge ${cls}">${txt}</span>
                 </div>
+                ${order.note ? '<div class="lc-note">🗒️ <span class="lc-note-text"></span></div>' : ''}
                 ${order.sapNumber ? `<div class="lc-sap">N° SAP : <strong title="Cliquer pour copier">${order.sapNumber}</strong></div>` : ''}
-                ${timelineHtml}
+                ${itemsHtml}
                 <div class="lc-card-foot">
                     <span>Ajouté : ${formatTimestamp(order.addedTimestamp)} · Dernier check : ${formatTimestamp(order.lastCheckedTimestamp)}</span>
-                    <span><span class="lc-refresh" title="Vérifier maintenant">↻ Actualiser</span><span class="lc-del" title="Supprimer du suivi">✕</span></span>
+                    <span><span class="lc-note-btn" title="Ajouter/modifier une note">✎ Note</span><span class="lc-refresh" title="Vérifier maintenant">↻ Actualiser</span><span class="lc-del" title="Supprimer du suivi">✕</span></span>
                 </div>
             `;
+
+            // La note est du texte libre : jamais injectée via innerHTML
+            const noteEl = card.querySelector('.lc-note-text');
+            if (noteEl) noteEl.textContent = order.note;
 
             const sapEl = card.querySelector('.lc-sap strong');
             if (sapEl) sapEl.addEventListener('click', () => {
                 navigator.clipboard.writeText(order.sapNumber).then(() => alert('N° SAP copié !')).catch(() => {});
             });
+            card.querySelector('.lc-note-btn').addEventListener('click', () => openNoteEditor(card, order));
             card.querySelector('.lc-del').addEventListener('click', () => deleteOrder(order.orderNumber));
             card.querySelector('.lc-refresh').addEventListener('click', () => checkOrder(order));
 
             ordersContainer.appendChild(card);
         });
+    }
+
+    // Éditeur de note inline (post-it par commande : « recontacter avant le
+    // 15/07 », etc.). L'enregistrement passe par updateOrder → re-render.
+    function openNoteEditor(card, order) {
+        if (card.querySelector('.lc-note-editor')) {
+            card.querySelector('.lc-note-editor input').focus();
+            return;
+        }
+        const ed = document.createElement('div');
+        ed.className = 'lc-note-editor';
+        ed.innerHTML = `
+            <input type="text" maxlength="200" placeholder="Note (ex. : contacter le client avant le 15/07)…">
+            <button class="casto-btn casto-btn-primary">OK</button>
+            <button class="casto-btn casto-btn-ghost">Annuler</button>
+        `;
+        const input = ed.querySelector('input');
+        input.value = order.note || '';
+        const [saveBtn, cancelBtn] = ed.querySelectorAll('button');
+        saveBtn.addEventListener('click', () => updateOrder(order.orderNumber, { note: input.value.trim() }));
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') updateOrder(order.orderNumber, { note: input.value.trim() }); });
+        cancelBtn.addEventListener('click', () => ed.remove());
+        card.querySelector('.lc-card-head').insertAdjacentElement('afterend', ed);
+        input.focus();
     }
 
     function toggleMainPopup() {
@@ -468,7 +635,7 @@
     // -----------------------------
     // NOTIFICATIONS D'ÉVOLUTION
     // -----------------------------
-    function showNotification(orderNumber, classif, ev, sapNumber) {
+    function showNotification(orderNumber, classif, ev, sapNumber, itemName) {
         const existing = document.getElementById('lc-dyn-notif');
         if (existing) existing.remove();
         const n = document.createElement('div');
@@ -477,6 +644,7 @@
         n.innerHTML = `
             <h4>${classif.icon} ${classif.label}</h4>
             <p>Commande <strong>${orderNumber}</strong>${sapNumber ? ` · SAP <strong>${sapNumber}</strong>` : ''}</p>
+            ${itemName ? `<p class="lc-notif-item">${itemName}</p>` : ''}
             ${ev.dateStr ? `<p>Date : <strong>${ev.dateStr}</strong>${ev.docNumber ? ` · Document n° <strong>${ev.docNumber}</strong>` : ''}</p>` : ''}
             <button class="casto-btn casto-btn-primary">OK</button>
         `;
@@ -536,7 +704,7 @@
 
         setInterval(periodicCheck, CHECK_INTERVAL_MS);
         attemptInjectTrackButton();
-        console.log("[Casto Tools · Suivi] Cycle de vie des commandes v1.4.0 initialisé.");
+        console.log("[Casto Tools · Suivi] Suivi de commande v1.6.0 initialisé.");
         if (!(await hasAgentHeaders())) console.warn('[Casto Tools · Suivi] En attente de capture prod-agent. Interagissez avec l’Agent si nécessaire.');
     }
 
