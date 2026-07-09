@@ -1,4 +1,4 @@
-// Casto Tools — module « Suivi de commande » (v1.5.0)
+// Casto Tools — module « Suivi de commande » (v1.6.0)
 // Cde achat → ASN → Transit → Réception, via l'API Agent, timeline FR,
 // notifications d'évolution.
 //
@@ -372,8 +372,12 @@
                 status = 'Réceptionné ✔'; closed = true;
             } else if (receivedCount > 0) {
                 status = `Partiel — ${receivedCount}/${items.length} lignes reçues`;
-            } else if (items.length > 0) {
-                status = items.reduce((a, b) => (b.stage < a.stage ? b : a)).status;
+            } else if (items.length > 1) {
+                // Plusieurs lignes à des stades différents : pas de statut
+                // global trompeur, les badges par ligne font foi.
+                status = `${items.length} lignes — voir détail`;
+            } else if (items.length === 1) {
+                status = items[0].status;
             } else {
                 status = 'en attente';
             }
@@ -501,6 +505,7 @@
         if (s.includes('erreur'))       return ['err', 'Erreur API'];
         if (order.closed)               return ['done', 'Réceptionné ✔'];
         if (s.includes('partiel'))      return ['partial', order.status];
+        if (s.includes('voir détail'))  return ['multi', order.status];
         if (s.includes('transit'))      return ['transit', 'En transit'];
         if (s.includes('asn') || s.includes('expédié')) return ['asn', 'Expédié (ASN)'];
         if (s.includes('préparation') || s.includes('preparation')) return ['asn', 'En préparation'];
@@ -570,23 +575,53 @@
                     <span class="lc-supplier">${order.clientName ? `👤 ${order.clientName}` : ''}${order.clientName && order.supplier ? ' · ' : ''}${order.supplier || ''}</span>
                     <span class="lc-badge ${cls}">${txt}</span>
                 </div>
+                ${order.note ? '<div class="lc-note">🗒️ <span class="lc-note-text"></span></div>' : ''}
                 ${order.sapNumber ? `<div class="lc-sap">N° SAP : <strong title="Cliquer pour copier">${order.sapNumber}</strong></div>` : ''}
                 ${itemsHtml}
                 <div class="lc-card-foot">
                     <span>Ajouté : ${formatTimestamp(order.addedTimestamp)} · Dernier check : ${formatTimestamp(order.lastCheckedTimestamp)}</span>
-                    <span><span class="lc-refresh" title="Vérifier maintenant">↻ Actualiser</span><span class="lc-del" title="Supprimer du suivi">✕</span></span>
+                    <span><span class="lc-note-btn" title="Ajouter/modifier une note">✎ Note</span><span class="lc-refresh" title="Vérifier maintenant">↻ Actualiser</span><span class="lc-del" title="Supprimer du suivi">✕</span></span>
                 </div>
             `;
+
+            // La note est du texte libre : jamais injectée via innerHTML
+            const noteEl = card.querySelector('.lc-note-text');
+            if (noteEl) noteEl.textContent = order.note;
 
             const sapEl = card.querySelector('.lc-sap strong');
             if (sapEl) sapEl.addEventListener('click', () => {
                 navigator.clipboard.writeText(order.sapNumber).then(() => alert('N° SAP copié !')).catch(() => {});
             });
+            card.querySelector('.lc-note-btn').addEventListener('click', () => openNoteEditor(card, order));
             card.querySelector('.lc-del').addEventListener('click', () => deleteOrder(order.orderNumber));
             card.querySelector('.lc-refresh').addEventListener('click', () => checkOrder(order));
 
             ordersContainer.appendChild(card);
         });
+    }
+
+    // Éditeur de note inline (post-it par commande : « recontacter avant le
+    // 15/07 », etc.). L'enregistrement passe par updateOrder → re-render.
+    function openNoteEditor(card, order) {
+        if (card.querySelector('.lc-note-editor')) {
+            card.querySelector('.lc-note-editor input').focus();
+            return;
+        }
+        const ed = document.createElement('div');
+        ed.className = 'lc-note-editor';
+        ed.innerHTML = `
+            <input type="text" maxlength="200" placeholder="Note (ex. : contacter le client avant le 15/07)…">
+            <button class="casto-btn casto-btn-primary">OK</button>
+            <button class="casto-btn casto-btn-ghost">Annuler</button>
+        `;
+        const input = ed.querySelector('input');
+        input.value = order.note || '';
+        const [saveBtn, cancelBtn] = ed.querySelectorAll('button');
+        saveBtn.addEventListener('click', () => updateOrder(order.orderNumber, { note: input.value.trim() }));
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') updateOrder(order.orderNumber, { note: input.value.trim() }); });
+        cancelBtn.addEventListener('click', () => ed.remove());
+        card.querySelector('.lc-card-head').insertAdjacentElement('afterend', ed);
+        input.focus();
     }
 
     function toggleMainPopup() {
@@ -669,7 +704,7 @@
 
         setInterval(periodicCheck, CHECK_INTERVAL_MS);
         attemptInjectTrackButton();
-        console.log("[Casto Tools · Suivi] Suivi de commande v1.5.0 initialisé.");
+        console.log("[Casto Tools · Suivi] Suivi de commande v1.6.0 initialisé.");
         if (!(await hasAgentHeaders())) console.warn('[Casto Tools · Suivi] En attente de capture prod-agent. Interagissez avec l’Agent si nécessaire.');
     }
 
