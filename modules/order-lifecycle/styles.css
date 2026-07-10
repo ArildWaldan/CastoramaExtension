@@ -1,45 +1,11 @@
-/* Casto Tools — Suivi de commande : styles.
+/* Casto Tools — Suivi de commande : styles (refonte « Timeline guidée »).
    Le module tourne dans Com+ (prod-agent.castorama.fr, agent-front) : l'UI
-   injectée reprend les jetons de design natifs de l'appli (Arial, bleu
-   rgb(0,120,215), radius 5px, corps 12px…) plutôt que la charte générique de
-   core/branding.css — on surcharge donc les variables .casto-ui localement. */
-
-#lc-overlay,
-#lc-popup,
-.lc-notif,
-.tracking-feature {
-  --casto-blue: rgb(0, 120, 215);       /* fond bouton primaire / liens */
-  --casto-blue-dark: rgb(0, 92, 202);   /* bordure bouton / hover */
-  --casto-blue-deep: rgb(0, 120, 215);  /* titres (h1 agent-front) */
-  --casto-text-muted: rgb(88, 88, 88);  /* liens nav agent-front */
-  --casto-radius: 5px;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 12px;
-}
-
-/* Boutons : mêmes métriques que les .btn/.btn-primary de l'appli hôte */
-#lc-popup .casto-btn,
-.lc-notif .casto-btn {
-  font-size: 12px;
-  font-weight: 700;
-  padding: 7px 10px;
-  height: 30px;
-  line-height: 1;
-  border-radius: 5px;
-}
-#lc-popup .casto-btn-primary,
-.lc-notif .casto-btn-primary {
-  border: 1px solid var(--casto-blue-dark);
-}
+   injectée reprend les jetons .casto-ui de core/branding.css (bleu #0d6db8,
+   jaune #ffdd00, Roboto, radius 6px). */
 
 /* -----------------------------
-   Bouton injecté dans le bloc « Commandes / N° de dossier » (main.jsp).
-   Le bouton lui-même porte les classes natives btn btn-primary (déjà
-   stylées par la feuille agent-front) ; on ne pose ici que l'espacement
-   et un filet de sécurité si ces classes évoluaient. */
-.tracking-feature {
-  margin-top: 10px;
-}
+   Bouton injecté dans le bloc « Commandes / N° de dossier » (main.jsp) */
+.tracking-feature { margin-top: 10px; }
 .tracking-feature #track-order-btn {
   display: inline-block;
   cursor: pointer;
@@ -50,115 +16,226 @@
 }
 
 /* -----------------------------
-   Panneau de suivi */
+   Boutons : mêmes métriques que les .btn/.btn-primary de l'appli hôte */
+#lc-popup .casto-btn,
+.lc-notif .casto-btn {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 10px;
+  height: 30px;
+  line-height: 1;
+  border-radius: var(--casto-radius);
+}
+#lc-popup .casto-btn-primary,
+.lc-notif .casto-btn-primary { border: 1px solid var(--casto-blue-dark); }
+
+/* -----------------------------
+   Overlay + panneau */
 #lc-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 10000;
-  display: none;
+  position: fixed; inset: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(6, 58, 97, 0.45);
+  z-index: 10000; display: none;
 }
 
 #lc-popup {
   position: fixed;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   background: var(--casto-bg);
   color: var(--casto-text);
   border: 1px solid var(--casto-border);
   box-shadow: var(--casto-shadow);
   z-index: 10001;
-  padding: 20px;
+  padding: 0;                 /* le padding vit désormais dans les zones */
   width: 820px;
   max-width: 94vw;
   max-height: 88vh;
   display: flex;
   flex-direction: column;
   border-radius: var(--casto-radius);
+  overflow: hidden;
 }
 
+/* En-tête */
 #lc-popup h3 {
-  margin: 0 0 15px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   color: var(--casto-blue-deep);
-  text-align: center;
   border-bottom: 1px solid var(--casto-border);
-  padding-bottom: 15px;
+  padding: 16px 22px;
   font-size: 18px;
   font-weight: 700;
 }
 #lc-popup h3 .lc-brand-dash {
-  display: inline-block;
-  width: 26px;
-  height: 9px;
+  width: 26px; height: 9px;
   border-radius: 5px;
   background: var(--casto-yellow);
-  margin-right: 10px;
-  vertical-align: middle;
+  flex: none;
+}
+#lc-popup h3 .lc-count {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--casto-text-muted);
 }
 
-#lc-popup .input-area { display: flex; margin-bottom: 16px; }
+/* Zone d'ajout */
+#lc-popup .input-area {
+  display: flex;
+  gap: 10px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--casto-border);
+}
 #lc-popup .input-area input {
   flex: 1;
-  padding: 7px 10px;
-  height: 30px;
-  background: #fff;
+  padding: 8px 12px;
+  height: 38px;
+  background: var(--casto-bg-soft);
   color: var(--casto-text);
   border: 1px solid var(--casto-border);
   border-radius: var(--casto-radius);
-  font-size: 12px;
+  font-size: 13px;
   font-family: inherit;
 }
-#lc-popup .input-area input:focus {
-  outline: none;
-  border-color: var(--casto-blue);
-}
-#lc-popup .input-area button { margin-left: 10px; }
-#lc-popup #lc-close-btn { margin-top: 16px; }
+#lc-popup .input-area input:focus { outline: none; border-color: var(--casto-blue); background: #fff; }
+#lc-popup .input-area button { height: 38px; }
 
+/* Liste des commandes (scroll) */
 #lc-orders {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+  padding: 18px 22px;
 }
 
+#lc-close-btn { margin: 0 22px 18px; align-self: flex-start; }
+
+/* -----------------------------
+   Carte commande */
 .lc-card {
-  background: var(--casto-bg-soft);
   border: 1px solid var(--casto-border);
   border-radius: var(--casto-radius);
-  padding: 14px 16px;
+  overflow: hidden;
+  background: var(--casto-bg);
 }
+
+/* En-tête de carte : n° proéminent + client + badge global */
 .lc-card-head {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
-  flex-wrap: wrap;
-  gap: 6px;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--casto-bg-soft);
+  border-bottom: 1px solid var(--casto-border);
 }
-.lc-card-head .lc-title { font-weight: 700; color: var(--casto-blue-deep); font-size: 14px; }
-.lc-card-head .lc-supplier { color: var(--casto-text-muted); font-size: 12px; }
+.lc-id { flex: 1; min-width: 0; }
+.lc-id-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.lc-num {
+  font-family: "Roboto Mono", ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--casto-blue-deep);
+  letter-spacing: 0.01em;
+}
+.lc-time { font-size: 11px; color: var(--casto-text-muted); }
+.lc-sub { margin-top: 3px; font-size: 13px; color: var(--casto-text-muted); }
+.lc-sub strong { color: var(--casto-text); font-weight: 700; }
 
-/* Lignes discrètes d'une commande : chaque article a son en-tête, son badge
-   et sa timeline propres */
-.lc-item { border-top: 1px dashed var(--casto-border); padding-top: 8px; margin-top: 8px; }
-.lc-item:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+/* -----------------------------
+   Tracker horizontal (Cde achat → ASN → Transit → Réception).
+   Chaque étape porte --c = couleur de son stade, posé en style inline. */
+.lc-tracker {
+  display: flex;
+  align-items: flex-start;
+  padding: 20px 22px 8px;
+}
+.lc-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 70px;
+}
+.lc-node {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; line-height: 1;
+}
+.lc-step.done .lc-node { background: var(--c); color: #fff; }
+.lc-step.part .lc-node { background: #fff; border: 2px solid var(--c); color: var(--c); font-size: 10px; }
+.lc-step.wait .lc-node { background: var(--casto-bg-soft); border: 1px solid var(--casto-border); color: var(--casto-text-muted); }
+.lc-node-label { font-size: 11px; font-weight: 700; text-align: center; line-height: 1.15; }
+.lc-step.done .lc-node-label,
+.lc-step.part .lc-node-label { color: var(--c); }
+.lc-step.wait .lc-node-label { color: var(--casto-text-muted); font-weight: 500; }
+.lc-conn {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  margin: 11px -6px 0;
+  background: var(--casto-border);
+}
+.lc-conn.done { background: var(--c); }
+.lc-conn.part { background: linear-gradient(90deg, var(--c) 50%, var(--casto-border) 50%); }
+
+/* -----------------------------
+   Bandeau puces : SAP + note */
+.lc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 6px 22px 14px;
+}
+.lc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: var(--casto-radius);
+  font-size: 12px;
+}
+.lc-chip-sap { background: #e0eefb; color: var(--casto-blue-dark); }
+.lc-chip-sap strong {
+  font-family: "Roboto Mono", ui-monospace, monospace;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+.lc-chip-note {
+  background: #fff8cc;
+  border: 1px solid #f0e2a0;
+  color: #6b5900;
+}
+
+/* -----------------------------
+   Lignes discrètes (articles) */
+.lc-lines { border-top: 1px solid var(--casto-border); }
+.lc-item { padding: 14px 22px; }
+.lc-item + .lc-item { border-top: 1px solid var(--casto-bg-soft); }
 .lc-item-head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.lc-item-name { font-weight: 700; font-size: 13px; color: var(--casto-text); }
+.lc-item-meta {
+  width: 100%;
+  order: 3;
+  color: var(--casto-text-muted);
+  font-size: 11px;
   margin-bottom: 4px;
 }
-.lc-item-name { font-weight: 700; font-size: 12px; color: var(--casto-text); flex: 1; min-width: 40%; }
-.lc-item-meta { color: var(--casto-text-muted); font-size: 11px; }
 
-.lc-badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+/* Badges (commande + ligne) */
+.lc-badge { padding: 4px 11px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.lc-item-head .lc-badge { font-size: 11px; padding: 2px 9px; }
 .lc-badge.wait    { background: #fff8cc; color: #8a7400; }
 .lc-badge.partial { background: #d8efe7; color: #14684f; }
 .lc-badge.multi   { background: #e8eef5; color: #31506b; }
@@ -170,18 +247,15 @@
 .lc-badge.auth    { background: #fdebd7; color: #a35a00; }
 .lc-badge.check   { background: #e9edf1; color: var(--casto-text-muted); font-style: italic; }
 
-.lc-sap { font-size: 12px; color: var(--casto-text-muted); margin-bottom: 10px; }
-.lc-sap strong { color: var(--casto-blue); cursor: pointer; text-decoration: underline dotted; }
-
-.lc-timeline { list-style: none; margin: 0; padding: 0 0 0 10px; border-left: 2px solid var(--casto-border); }
-.lc-timeline li { position: relative; padding: 4px 0 4px 18px; font-size: 12px; }
+/* Timeline verticale par ligne */
+.lc-timeline { list-style: none; margin: 0; padding: 0 0 0 12px; border-left: 2px solid var(--casto-border); display: flex; flex-direction: column; gap: 7px; }
+.lc-timeline li { position: relative; padding-left: 16px; font-size: 12px; color: var(--casto-text-muted); }
+.lc-timeline li.s4 { color: var(--casto-text); font-weight: 500; }
 .lc-timeline li::before {
   content: '';
   position: absolute;
-  left: -7px;
-  top: 11px;
-  width: 10px;
-  height: 10px;
+  left: -19px; top: 3px;
+  width: 10px; height: 10px;
   border-radius: 50%;
   background: var(--casto-border);
 }
@@ -189,53 +263,44 @@
 .lc-timeline li.s2::before { background: var(--casto-purple); }
 .lc-timeline li.s3::before { background: var(--casto-orange); }
 .lc-timeline li.s4::before { background: var(--casto-green); }
-.lc-timeline .lc-date { color: var(--casto-text-muted); margin-left: 6px; font-size: 11px; }
-.lc-timeline .lc-doc  { color: var(--casto-text-muted); margin-left: 6px; font-size: 11px; }
+.lc-timeline .lc-date,
+.lc-timeline .lc-doc { color: var(--casto-text-muted); margin-left: 6px; font-size: 11px; }
+.lc-no-event { color: var(--casto-text-muted); font-size: 12px; padding: 12px 22px; }
 
-.lc-no-event { color: var(--casto-text-muted); font-size: 12px; }
-
+/* Pied de carte : actions */
 .lc-card-foot {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-top: 10px;
-  font-size: 11px;
-  color: var(--casto-text-muted);
-}
-.lc-del { cursor: pointer; color: var(--casto-red); font-weight: bold; }
-.lc-del:hover { color: #8f2a20; }
-.lc-refresh { cursor: pointer; color: var(--casto-blue); margin-right: 12px; }
-.lc-refresh:hover { color: var(--casto-blue-dark); }
-.lc-note-btn { cursor: pointer; color: var(--casto-blue); margin-right: 12px; }
-.lc-note-btn:hover { color: var(--casto-blue-dark); }
-
-/* Note manuelle (post-it) et son éditeur inline */
-.lc-note {
-  background: #fff8cc;
-  border: 1px solid #f0e2a0;
-  border-radius: var(--casto-radius);
-  padding: 6px 10px;
+  justify-content: flex-end;
+  gap: 18px;
+  padding: 11px 22px;
+  background: #fafbfc;
+  border-top: 1px solid var(--casto-border);
   font-size: 12px;
-  color: #6b5900;
-  margin-bottom: 10px;
 }
-.lc-note-editor { display: flex; gap: 8px; margin-bottom: 10px; }
+.lc-card-foot .lc-meta { margin-right: auto; color: var(--casto-text-muted); font-size: 11px; }
+.lc-note-btn, .lc-refresh { cursor: pointer; color: var(--casto-blue); }
+.lc-note-btn:hover, .lc-refresh:hover { color: var(--casto-blue-dark); }
+.lc-del { cursor: pointer; color: var(--casto-red); font-weight: 700; }
+.lc-del:hover { color: #8f2a20; }
+
+/* Éditeur de note inline */
+.lc-note-editor { display: flex; gap: 8px; padding: 12px 22px; background: var(--casto-bg-soft); border-bottom: 1px solid var(--casto-border); }
 .lc-note-editor input {
-  flex: 1;
-  padding: 7px 10px;
-  height: 30px;
+  flex: 1; padding: 7px 10px; height: 30px;
   border: 1px solid var(--casto-border);
   border-radius: var(--casto-radius);
-  font-size: 12px;
-  font-family: inherit;
+  font-size: 12px; font-family: inherit;
 }
 .lc-note-editor input:focus { outline: none; border-color: var(--casto-blue); }
-.lc-empty { text-align: center; color: var(--casto-text-muted); padding: 30px 0; }
 
+.lc-empty { text-align: center; color: var(--casto-text-muted); padding: 40px 0; }
+
+/* -----------------------------
+   Notification d'évolution */
 .lc-notif {
   position: fixed;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   box-shadow: var(--casto-shadow);
   z-index: 10002;

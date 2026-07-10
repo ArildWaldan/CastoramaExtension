@@ -11,7 +11,7 @@ const CASTO_MODULES = [
     id: 'order-lifecycle',
     name: 'Suivi de commande',
     description: "Suivi du cycle de vie des commandes fournisseur (Cde achat → ASN → Transit → Réception), ligne par ligne, via l'API Agent, avec timeline, notifications d'évolution et notes manuelles. Bouton intégré à la page d'accueil Com+ (bloc Commandes).",
-    version: '1.6.0',
+    version: '1.7.0',
     hosts: ['prod-agent.castorama.fr'],
     defaultEnabled: true
   }
