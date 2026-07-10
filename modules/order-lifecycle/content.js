@@ -1,4 +1,4 @@
-// Casto Tools — module « Suivi de commande » (v1.7.0)
+// Casto Tools — module « Suivi de commande » (v1.7.1)
 // Cde achat → ASN → Transit → Réception, via l'API Agent, timeline FR,
 // notifications d'évolution.
 //
@@ -32,6 +32,10 @@
     let popupOverlay = null;
     let ordersContainer = null;
     let orderInput = null;
+    // Cartes dépliées (les cartes sont repliées par défaut : en-tête +
+    // tracker seuls). En mémoire seulement : survit aux re-renders de la
+    // session, pas à un rechargement de page.
+    const expandedOrders = new Set();
 
     // -----------------------------
     // AUTH (capturée par le service worker — clés partagées avec le script SAP)
@@ -450,11 +454,13 @@
             addedTimestamp: Date.now(), lastCheckedTimestamp: 0
         };
         trackedOrders.push(newOrder);
+        expandedOrders.add(orderNumber); // nouvelle commande : dépliée d'emblée
         saveOrders(); renderOrders();
         checkOrder(newOrder);
     }
     function deleteOrder(orderNumber) {
         trackedOrders = trackedOrders.filter(o => o.orderNumber !== orderNumber);
+        expandedOrders.delete(orderNumber);
         saveOrders(); renderOrders();
     }
     function updateOrder(orderNumber, updates) {
@@ -585,7 +591,7 @@
         trackedOrders.forEach((order) => {
             const [cls, txt] = badgeFor(order);
             const card = document.createElement('div');
-            card.className = 'lc-card';
+            card.className = 'lc-card' + (expandedOrders.has(order.orderNumber) ? ' open' : '');
 
             // Timeline verticale d'une ligne (triée stade puis date)
             const timelineFor = (events) => {
@@ -649,16 +655,28 @@
                         ${clientLine}
                     </div>
                     <span class="lc-badge ${cls}">${txt}</span>
+                    <span class="lc-caret">▶</span>
                 </div>
                 ${orderTrackerHtml(items)}
-                ${chipsHtml}
-                <div class="lc-lines">${linesHtml}</div>
-                <div class="lc-card-foot">
-                    <span class="lc-note-btn" title="Ajouter/modifier une note">✎ Note</span>
-                    <span class="lc-refresh" title="Vérifier maintenant">↻ Actualiser</span>
-                    <span class="lc-del" title="Supprimer du suivi">✕ Retirer</span>
+                <div class="lc-details">
+                    ${chipsHtml}
+                    <div class="lc-lines">${linesHtml}</div>
+                    <div class="lc-card-foot">
+                        <span class="lc-note-btn" title="Ajouter/modifier une note">✎ Note</span>
+                        <span class="lc-refresh" title="Vérifier maintenant">↻ Actualiser</span>
+                        <span class="lc-del" title="Supprimer du suivi">✕ Retirer</span>
+                    </div>
                 </div>
             `;
+
+            // Replié par défaut : l'en-tête et le tracker déplient/replient
+            const toggleDetails = () => {
+                const open = card.classList.toggle('open');
+                if (open) expandedOrders.add(order.orderNumber);
+                else expandedOrders.delete(order.orderNumber);
+            };
+            card.querySelector('.lc-card-head').addEventListener('click', toggleDetails);
+            card.querySelector('.lc-tracker').addEventListener('click', toggleDetails);
 
             // La note est du texte libre : jamais injectée via innerHTML
             const noteEl = card.querySelector('.lc-note-text');
@@ -702,8 +720,11 @@
 
     function toggleMainPopup() {
         if (!mainPopup || !popupOverlay) createMainPopup();
-        const isVisible = mainPopup.style.display === 'block';
-        mainPopup.style.display = isVisible ? 'none' : 'block';
+        const isVisible = mainPopup.style.display === 'flex';
+        // 'flex' et pas 'block' : le style inline écraserait le display:flex
+        // de la feuille de style, et la colonne flex (donc le scroll de la
+        // liste, qui doit pouvoir rétrécir) ne s'appliquerait jamais.
+        mainPopup.style.display = isVisible ? 'none' : 'flex';
         popupOverlay.style.display = isVisible ? 'none' : 'block';
         if (!isVisible) { loadOrders().then(renderOrders); }
     }
@@ -780,7 +801,7 @@
 
         setInterval(periodicCheck, CHECK_INTERVAL_MS);
         attemptInjectTrackButton();
-        console.log("[Casto Tools · Suivi] Suivi de commande v1.7.0 initialisé.");
+        console.log("[Casto Tools · Suivi] Suivi de commande v1.7.1 initialisé.");
         if (!(await hasAgentHeaders())) console.warn('[Casto Tools · Suivi] En attente de capture prod-agent. Interagissez avec l’Agent si nécessaire.');
     }
 
