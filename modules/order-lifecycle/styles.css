@@ -103,9 +103,13 @@
 #lc-popup .input-area input:focus { outline: none; border-color: var(--casto-blue); background: #fff; }
 #lc-popup .input-area button { height: 38px; }
 
-/* Liste des commandes (scroll) */
+/* Liste des commandes (scroll).
+   min-height: 0 est indispensable : sans lui, l'enfant flex refuse de
+   rétrécir sous la hauteur de son contenu et le scroll ne se déclenche
+   jamais (le contenu est simplement rogné par l'overflow du panneau). */
 #lc-orders {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -122,9 +126,15 @@
   border-radius: var(--casto-radius);
   overflow: hidden;
   background: var(--casto-bg);
+  /* Enfant flex de #lc-orders : sans ça, l'overflow:hidden ci-dessus
+     autorise flexbox à comprimer la carte pour tout faire tenir, et la
+     liste ne déborde (donc ne défile) jamais. */
+  flex-shrink: 0;
 }
 
-/* En-tête de carte : n° proéminent + client + badge global */
+/* En-tête de carte : n° proéminent + client + badge global.
+   La carte est repliée par défaut (en-tête + tracker seuls) ; un clic sur
+   l'en-tête ou le tracker déplie les détails (puces, lignes, actions). */
 .lc-card-head {
   display: flex;
   align-items: center;
@@ -132,7 +142,18 @@
   padding: 14px 18px;
   background: var(--casto-bg-soft);
   border-bottom: 1px solid var(--casto-border);
+  cursor: pointer;
+  user-select: none;
 }
+.lc-caret {
+  flex: none;
+  color: var(--casto-text-muted);
+  font-size: 12px;
+  transition: transform 0.15s ease;
+}
+.lc-card.open .lc-caret { transform: rotate(90deg); }
+.lc-details { display: none; }
+.lc-card.open .lc-details { display: block; }
 .lc-id { flex: 1; min-width: 0; }
 .lc-id-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .lc-num {
@@ -153,7 +174,10 @@
   display: flex;
   align-items: flex-start;
   padding: 20px 22px 8px;
+  cursor: pointer;
 }
+/* Carte repliée : le tracker termine la carte, on lui rend du souffle */
+.lc-card:not(.open) .lc-tracker { padding-bottom: 18px; }
 .lc-step {
   display: flex;
   flex-direction: column;

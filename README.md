@@ -52,7 +52,7 @@ tools/
 
 ## Modules
 
-### Suivi de commande (`order-lifecycle`, v1.7.0)
+### Suivi de commande (`order-lifecycle`, v1.7.1)
 
 Suivi du cycle de vie des commandes fournisseur (**Cde achat → ASN / Cde en préparation → Transit → Réception**) via l'API Agent, timeline en français, notifications d'évolution.
 
@@ -62,7 +62,7 @@ Chaque commande suivie peut porter une **note manuelle** (« recontacter le clie
 
 Depuis la v1.4.0 le module tourne **directement sur Com+** (`prod-agent.castorama.fr`, agent-front) — là où les commandes sont gérées — et non plus sur `dc.kfplc.com` :
 - un bouton **« Suivi de commande »** est injecté dans le bloc « Commandes / N° de dossier » de la page d'accueil agent (`main.jsp`), en dernier enfant du bloc, avec les classes natives `btn btn-primary` de l'appli ;
-- l'UI du panneau suit la refonte « Timeline guidée » (v1.7) sur les jetons `.casto-ui` de `core/branding.css` : tracker horizontal Cde achat → ASN → Transit → Réception par commande (nœud plein = toutes les lignes ont franchi le stade, nœud `x/y` = une partie seulement), puces SAP/note, timeline verticale par ligne, compteur de commandes suivies dans l'en-tête.
+- l'UI du panneau suit la refonte « Timeline guidée » (v1.7) sur les jetons `.casto-ui` de `core/branding.css` : tracker horizontal Cde achat → ASN → Transit → Réception par commande (nœud plein = toutes les lignes ont franchi le stade, nœud `x/y` = une partie seulement), puces SAP/note, timeline verticale par ligne, compteur de commandes suivies dans l'en-tête. Les cartes sont **repliées par défaut** (en-tête + tracker) ; un clic sur l'en-tête ou le tracker déplie les détails (puces SAP/note, lignes, actions) — une commande fraîchement ajoutée arrive dépliée. La liste défile quand elle dépasse la hauteur du panneau.
 
 Notes :
 - Classification des étapes, détection de session expirée et workflow de re-check toutes les 15 min inchangés ; si la page commande ne contient aucune ligne identifiable, on retombe sur l'ancien parsing global (commande = ligne unique).
