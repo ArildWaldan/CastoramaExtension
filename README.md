@@ -52,7 +52,7 @@ tools/
 
 ## Modules
 
-### Suivi de commande (`order-lifecycle`, v1.6.0)
+### Suivi de commande (`order-lifecycle`, v1.7.0)
 
 Suivi du cycle de vie des commandes fournisseur (**Cde achat → ASN / Cde en préparation → Transit → Réception**) via l'API Agent, timeline en français, notifications d'évolution.
 
@@ -62,7 +62,7 @@ Chaque commande suivie peut porter une **note manuelle** (« recontacter le clie
 
 Depuis la v1.4.0 le module tourne **directement sur Com+** (`prod-agent.castorama.fr`, agent-front) — là où les commandes sont gérées — et non plus sur `dc.kfplc.com` :
 - un bouton **« Suivi de commande »** est injecté dans le bloc « Commandes / N° de dossier » de la page d'accueil agent (`main.jsp`), en dernier enfant du bloc, avec les classes natives `btn btn-primary` de l'appli ;
-- l'UI du panneau reprend les jetons de design d'agent-front (Arial, bleu `rgb(0,120,215)`, bordures `rgb(0,92,202)`, radius 5px, corps 12px) via une surcharge locale des variables de `core/branding.css` (cf. `modules/order-lifecycle/styles.css`).
+- l'UI du panneau suit la refonte « Timeline guidée » (v1.7) sur les jetons `.casto-ui` de `core/branding.css` : tracker horizontal Cde achat → ASN → Transit → Réception par commande (nœud plein = toutes les lignes ont franchi le stade, nœud `x/y` = une partie seulement), puces SAP/note, timeline verticale par ligne, compteur de commandes suivies dans l'en-tête.
 
 Notes :
 - Classification des étapes, détection de session expirée et workflow de re-check toutes les 15 min inchangés ; si la page commande ne contient aucune ligne identifiable, on retombe sur l'ancien parsing global (commande = ligne unique).

@@ -1,4 +1,4 @@
-// Casto Tools — module « Suivi de commande » (v1.6.0)
+// Casto Tools — module « Suivi de commande » (v1.7.0)
 // Cde achat → ASN → Transit → Réception, via l'API Agent, timeline FR,
 // notifications d'évolution.
 //
@@ -6,7 +6,7 @@
 // (prod-agent.castorama.fr, agent-front) — là où les commandes sont gérées —
 // au lieu de dc.kfplc.com : un bouton « Suivi de commande » est injecté dans
 // le bloc « Commandes / N° de dossier » de la page d'accueil agent (main.jsp),
-// et l'UI du panneau reprend les styles natifs de l'appli (cf. styles.css).
+// et l'UI du panneau suit la refonte « Timeline guidée » (cf. styles.css).
 //
 // Différences avec le userscript d'origine (voir README) :
 //   - GM_get/setValue          → chrome.storage.local (core/storage.js)
@@ -480,7 +480,11 @@
             mainPopup.className = 'casto-ui';
             mainPopup.style.display = 'none';
             mainPopup.innerHTML = `
-                <h3><span class="lc-brand-dash"></span>Suivi de commande</h3>
+                <h3>
+                    <span class="lc-brand-dash"></span>
+                    Suivi de commande
+                    <span class="lc-count" id="lc-count"></span>
+                </h3>
                 <div class="input-area">
                     <input type="text" id="lc-order-input" placeholder="Entrer numéro de commande...">
                     <button id="lc-add-btn" class="casto-btn casto-btn-primary">Suivre</button>
@@ -513,46 +517,102 @@
         return ['wait', 'En attente'];
     }
 
+    // -----------------------------
+    // TRACKER HORIZONTAL (refonte « Timeline guidée »)
+    // -----------------------------
+    // Les 4 stades logiques, dans l'ordre. `varc` = jeton couleur .casto-ui.
+    const STAGES = [
+        { n: 1, label: 'Cde achat',   varc: '--casto-blue'   },
+        { n: 2, label: 'Expédié ASN', varc: '--casto-purple' },
+        { n: 3, label: 'En transit',  varc: '--casto-orange' },
+        { n: 4, label: 'Réception',   varc: '--casto-green'  },
+    ];
+
+    // Stade le plus avancé atteint par une ligne (fallback : recalcul via events
+    // pour les commandes stockées avant que it.stage n'existe).
+    function itemHighestStage(it) {
+        if (typeof it.stage === 'number') return it.stage;
+        return (it.events || []).reduce((mx, ev) => Math.max(mx, classifyEvent(ev).stage), 0);
+    }
+
+    // Construit le tracker horizontal d'UNE commande, toutes lignes confondues.
+    // Pour chaque stade : « done » si TOUTES les lignes l'ont franchi, « part »
+    // si une partie seulement (goulot → on voit la ligne en retard), « wait »
+    // sinon. Le connecteur qui précède un nœud reprend l'état/couleur de ce nœud.
+    function orderTrackerHtml(items) {
+        const list  = items.length ? items : [{ events: [], stage: 0 }];
+        const total = list.length;
+        const highs = list.map(itemHighestStage);
+        const reached = (n) => highs.filter((h) => h >= n).length;
+
+        let html = '<div class="lc-tracker">';
+        STAGES.forEach((st, i) => {
+            const c     = reached(st.n);
+            const state = c === total ? 'done' : c > 0 ? 'part' : 'wait';
+            const color = `var(${st.varc})`;
+
+            // Connecteur AVANT ce nœud (sauf le 1er)
+            if (i > 0) {
+                html += `<span class="lc-conn ${state === 'wait' ? '' : state}" style="--c:${color}"></span>`;
+            }
+            // Contenu du nœud
+            const glyph = state === 'done' ? '✓'
+                        : state === 'part' ? (total > 1 ? `${c}/${total}` : '●')
+                        : String(st.n);
+            html += `
+                <div class="lc-step ${state}" style="--c:${color}">
+                    <span class="lc-node">${glyph}</span>
+                    <span class="lc-node-label">${st.label}</span>
+                </div>`;
+        });
+        return html + '</div>';
+    }
+
     function renderOrders() {
         if (!ordersContainer) return;
         ordersContainer.innerHTML = '';
+
+        // Compteur dans l'en-tête
+        const countEl = document.getElementById('lc-count');
+        if (countEl) countEl.textContent = trackedOrders.length
+            ? `${trackedOrders.length} suivie${trackedOrders.length > 1 ? 's' : ''}` : '';
+
         if (!trackedOrders.length) {
             ordersContainer.innerHTML = '<div class="lc-empty">Aucune commande suivie. Ajoutez un numéro ci-dessus.</div>';
             return;
         }
 
-        trackedOrders.forEach(order => {
+        trackedOrders.forEach((order) => {
             const [cls, txt] = badgeFor(order);
             const card = document.createElement('div');
             card.className = 'lc-card';
 
+            // Timeline verticale d'une ligne (triée stade puis date)
             const timelineFor = (events) => {
-                // Timeline triée : par étape puis par date
                 const evts = (events || []).slice().sort((a, b) => {
                     const sa = classifyEvent(a).stage, sb = classifyEvent(b).stage;
                     if (sa !== sb) return sa - sb;
                     return parseFrDate(a.dateStr) - parseFrDate(b.dateStr);
                 });
                 return evts.length
-                    ? '<ul class="lc-timeline">' + evts.map(ev => {
-                        const c = classifyEvent(ev);
-                        const doc = ev.docNumber ? `<span class="lc-doc">n° ${ev.docNumber}</span>` : '';
-                        const date = ev.dateStr ? `<span class="lc-date">${ev.dateStr}</span>` : '';
-                        const st = ev.statut ? ` — ${ev.statut}` : '';
-                        return `<li class="s${c.stage}">${c.icon} ${c.label}${st}${date}${doc}</li>`;
+                    ? '<ul class="lc-timeline">' + evts.map((ev) => {
+                        const cl   = classifyEvent(ev);
+                        const doc  = ev.docNumber ? `<span class="lc-doc">n° ${ev.docNumber}</span>` : '';
+                        const date = ev.dateStr   ? `<span class="lc-date">${ev.dateStr}</span>` : '';
+                        const st   = ev.statut ? ` — ${ev.statut}` : '';
+                        return `<li class="s${cl.stage}">${cl.label}${st}${date}${doc}</li>`;
                       }).join('') + '</ul>'
                     : '<div class="lc-no-event">Aucun événement pour l’instant.</div>';
             };
 
-            // Lignes discrètes (≥ v1.5) ; les commandes stockées avant ont
-            // encore leurs événements à plat → ligne unique sans en-tête.
+            // Lignes discrètes (≥ v1.5) ; anciennes commandes → ligne unique.
             const items = (order.items && order.items.length) ? order.items
                 : (order.events && order.events.length)
                     ? [{ name: '', events: order.events, status: order.status, closed: order.closed }]
                     : [];
 
-            const itemsHtml = items.length
-                ? items.map(it => {
+            const linesHtml = items.length
+                ? items.map((it) => {
                     let head = '';
                     if (it.name || items.length > 1) {
                         const [icls, itxt] = badgeFor(it);
@@ -561,26 +621,42 @@
                         head = `
                             <div class="lc-item-head">
                                 <span class="lc-item-name">${it.line ? `${it.line}. ` : ''}${it.name || 'Ligne'}</span>
-                                ${meta ? `<span class="lc-item-meta">${meta}</span>` : ''}
                                 <span class="lc-badge ${icls}">${itxt}</span>
+                                ${meta ? `<span class="lc-item-meta">${meta}</span>` : ''}
                             </div>`;
                     }
                     return `<div class="lc-item">${head}${timelineFor(it.events)}</div>`;
                   }).join('')
                 : '<div class="lc-no-event">Aucun événement pour l’instant.</div>';
 
+            // Puces SAP + note
+            const chips = [];
+            if (order.sapNumber) chips.push(`<span class="lc-chip lc-chip-sap">N° SAP <strong title="Cliquer pour copier">${order.sapNumber}</strong> ⧉</span>`);
+            if (order.note)      chips.push('<span class="lc-chip lc-chip-note">🗒️ <span class="lc-note-text"></span></span>');
+            const chipsHtml = chips.length ? `<div class="lc-chips">${chips.join('')}</div>` : '';
+
+            const clientLine = (order.clientName || order.supplier)
+                ? `<div class="lc-sub">${order.clientName ? `👤 <strong>${order.clientName}</strong>` : ''}${order.clientName && order.supplier ? ' · ' : ''}${order.supplier || ''}</div>`
+                : '';
+
             card.innerHTML = `
                 <div class="lc-card-head">
-                    <span class="lc-title">Commande ${order.orderNumber}</span>
-                    <span class="lc-supplier">${order.clientName ? `👤 ${order.clientName}` : ''}${order.clientName && order.supplier ? ' · ' : ''}${order.supplier || ''}</span>
+                    <div class="lc-id">
+                        <div class="lc-id-top">
+                            <span class="lc-num">${order.orderNumber}</span>
+                            <span class="lc-time">ajouté ${formatTimestamp(order.addedTimestamp)} · vérifié ${formatTimestamp(order.lastCheckedTimestamp)}</span>
+                        </div>
+                        ${clientLine}
+                    </div>
                     <span class="lc-badge ${cls}">${txt}</span>
                 </div>
-                ${order.note ? '<div class="lc-note">🗒️ <span class="lc-note-text"></span></div>' : ''}
-                ${order.sapNumber ? `<div class="lc-sap">N° SAP : <strong title="Cliquer pour copier">${order.sapNumber}</strong></div>` : ''}
-                ${itemsHtml}
+                ${orderTrackerHtml(items)}
+                ${chipsHtml}
+                <div class="lc-lines">${linesHtml}</div>
                 <div class="lc-card-foot">
-                    <span>Ajouté : ${formatTimestamp(order.addedTimestamp)} · Dernier check : ${formatTimestamp(order.lastCheckedTimestamp)}</span>
-                    <span><span class="lc-note-btn" title="Ajouter/modifier une note">✎ Note</span><span class="lc-refresh" title="Vérifier maintenant">↻ Actualiser</span><span class="lc-del" title="Supprimer du suivi">✕</span></span>
+                    <span class="lc-note-btn" title="Ajouter/modifier une note">✎ Note</span>
+                    <span class="lc-refresh" title="Vérifier maintenant">↻ Actualiser</span>
+                    <span class="lc-del" title="Supprimer du suivi">✕ Retirer</span>
                 </div>
             `;
 
@@ -588,7 +664,7 @@
             const noteEl = card.querySelector('.lc-note-text');
             if (noteEl) noteEl.textContent = order.note;
 
-            const sapEl = card.querySelector('.lc-sap strong');
+            const sapEl = card.querySelector('.lc-chip-sap strong');
             if (sapEl) sapEl.addEventListener('click', () => {
                 navigator.clipboard.writeText(order.sapNumber).then(() => alert('N° SAP copié !')).catch(() => {});
             });
@@ -704,7 +780,7 @@
 
         setInterval(periodicCheck, CHECK_INTERVAL_MS);
         attemptInjectTrackButton();
-        console.log("[Casto Tools · Suivi] Suivi de commande v1.6.0 initialisé.");
+        console.log("[Casto Tools · Suivi] Suivi de commande v1.7.0 initialisé.");
         if (!(await hasAgentHeaders())) console.warn('[Casto Tools · Suivi] En attente de capture prod-agent. Interagissez avec l’Agent si nécessaire.');
     }
 
