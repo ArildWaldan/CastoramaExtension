@@ -46,6 +46,19 @@
         "modules/order-lifecycle/styles.css"
       ],
       "run_at": "document_end"
+    },
+    {
+      "matches": ["https://dc.kfplc.com/*"],
+      "js": [
+        "core/storage.js",
+        "core/modules.js",
+        "core/runtime.js",
+        "modules/provisionnes/content.js"
+      ],
+      "css": [
+        "modules/provisionnes/styles.css"
+      ],
+      "run_at": "document_end"
     }
   ]
 }

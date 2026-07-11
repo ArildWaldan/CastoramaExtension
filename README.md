@@ -27,6 +27,9 @@ modules/
   order-lifecycle/             Module « Suivi de commande »
     content.js
     styles.css
+  provisionnes/                Module « Provisionnés »
+    content.js
+    styles.css
 tools/
   gen_icons.py                 Régénération des icônes (aucune dépendance)
 ```
@@ -68,6 +71,19 @@ Notes :
 - Classification des étapes, détection de session expirée et workflow de re-check toutes les 15 min inchangés ; si la page commande ne contient aucune ligne identifiable, on retombe sur l'ancien parsing global (commande = ligne unique).
 - Les données suivies restent sous la clé `lifecycleOrders_kfplc` dans `chrome.storage.local`. Les commandes stockées avant la 1.5 (événements à plat, sans lignes) restent affichables et sont converties au format par ligne à leur prochaine vérification.
 - Comme le module vit désormais sur prod-agent, les en-têtes d'authentification Agent sont capturés dès la navigation normale sur Com+.
+
+### Provisionnés (`provisionnes`, v1.4.0)
+
+Port 1:1 du userscript éponyme, sur Com+ (`dc.kfplc.com`) : import d'un fichier **CSV des provisionnés** (entrée « MAJ Provisionnés » injectée dans le menu, à côté de Pricer), mapping tolérant des colonnes (EAN, Qté stock J-1, PV Plancher, Taux prov, Qté à sortir — détection auto du délimiteur et de l'encodage UTF-8/Windows-1252), stockage par EAN.
+
+Sur les pages produit :
+- **résultats de recherche** : badge `Prov. x%` + PV Plancher sur chaque article présent dans le CSV, et filtre « Provisionnés » ajouté au menu déroulant des filtres (préférence persistée) ;
+- **fiche produit** : PV Plancher + badge sous le prix, et pastille « x provisionnés rest. » sur la ligne Total du stock (calcul `stock actuel − (stock J-1 − qté à sortir)`).
+
+Notes de portage :
+- `GM_get/setValue` → `castoStorage` (`chrome.storage.local`) — l'API du userscript était déjà asynchrone, port direct ; mêmes clés (`provCsvDataV3`, `provCsvLastImportV1`, `provCsvFilterProvOnlyV1`), mais les données Tampermonkey ne sont **pas migrées** automatiquement (réimporter le CSV).
+- `GM_addStyle` → `modules/provisionnes/styles.css` ; l'UI (modale d'import, toast) reste auto-thémée clair/sombre comme dans le userscript, indépendante de la charte `casto-ui`.
+- Aucun appel réseau : pas de nouvelle host_permission (l'injection sur `dc.kfplc.com` passe par les `matches` du content script).
 
 ## Permissions demandées
 

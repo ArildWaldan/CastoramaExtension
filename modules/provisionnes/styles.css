@@ -1,0 +1,91 @@
+/* Casto Tools — Provisionnés : styles (port 1:1 du GM_addStyle du userscript).
+   UI auto-thémée (détection clair/sombre via la classe body.provcsv-light-theme
+   posée par le module) — indépendante de la charte casto-ui. */
+
+/* --- Modal Overlay --- */
+#provcsv-overlay{position:fixed;inset:0;z-index:999998;display:none;backdrop-filter:blur(4px);transition:background .2s}
+
+/* --- Modal Panel (Theme-Aware) --- */
+#provcsv-panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,90vw);border-radius:16px;box-shadow:0 25px 50px -12px rgba(0,0,0,.25);padding:24px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;transition:background .2s,color .2s,border-color .2s}
+#provcsv-panel h3{margin:0 0 6px 0;font-size:18px;font-weight:600;line-height:1.3}
+#provcsv-panel .provcsv-subtitle{margin:0 0 20px 0;font-size:13px;opacity:.7}
+#provcsv-panel .provcsv-last-import{display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:10px;margin-bottom:16px;font-size:13px}
+#provcsv-panel .provcsv-last-import svg{flex-shrink:0}
+#provcsv-panel .provcsv-last-import strong{font-weight:600}
+.provcsv-drop{border:2px dashed;border-radius:12px;padding:28px 20px;text-align:center;transition:background .15s,border-color .15s}
+.provcsv-drop.dragover{border-style:solid}
+.provcsv-drop-icon{margin-bottom:12px}
+.provcsv-drop-text{font-size:14px;font-weight:500;margin-bottom:4px}
+.provcsv-drop-hint{font-size:12px;opacity:.6}
+.provcsv-actions{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:20px}
+.provcsv-btn{border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:500;cursor:pointer;transition:background .15s,transform .1s}
+.provcsv-btn:hover{transform:translateY(-1px)}
+.provcsv-btn:active{transform:translateY(0)}
+.provcsv-file-info{display:none;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;margin-top:12px;font-size:13px}
+.provcsv-file-info.visible{display:flex}
+.provcsv-file-info svg{flex-shrink:0}
+.provcsv-file-info .provcsv-file-name{font-weight:500;word-break:break-all}
+.provcsv-file-info .provcsv-file-clear{margin-left:auto;cursor:pointer;opacity:.6;transition:opacity .15s}
+.provcsv-file-info .provcsv-file-clear:hover{opacity:1}
+.provcsv-badge{display:inline-block;padding:2px 6px;border-radius:6px;background:#ee3b3b;color:#fff;font:700 12px/1.2 system-ui,Segoe UI,Roboto,Arial;margin-top:4px;margin-right:6px}
+
+/* --- Toast Notification --- */
+#provcsv-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);z-index:999999;padding:14px 20px;border-radius:12px;font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;align-items:center;gap:10px;box-shadow:0 10px 40px rgba(0,0,0,.2);opacity:0;transition:transform .3s cubic-bezier(.4,0,.2,1),opacity .3s}
+#provcsv-toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+#provcsv-toast svg{flex-shrink:0}
+
+/* --- Dark Theme (Default) --- */
+#provcsv-overlay{background:rgba(0,0,0,.5)}
+#provcsv-panel{background:#1a1f2e;color:#e5e7eb;border:1px solid rgba(255,255,255,.1)}
+#provcsv-panel .provcsv-last-import{background:rgba(99,102,241,.1);color:#a5b4fc}
+#provcsv-panel .provcsv-last-import svg{color:#818cf8}
+.provcsv-drop{border-color:rgba(255,255,255,.15);background:rgba(255,255,255,.02)}
+.provcsv-drop.dragover{border-color:#6366f1;background:rgba(99,102,241,.1)}
+.provcsv-drop-icon svg{color:#6b7280}
+.provcsv-btn{background:rgba(255,255,255,.08);color:#e5e7eb}
+.provcsv-btn:hover{background:rgba(255,255,255,.12)}
+.provcsv-btn.primary{background:#6366f1;color:#fff}
+.provcsv-btn.primary:hover{background:#4f46e5}
+.provcsv-file-info{background:rgba(99,102,241,.1);color:#c7d2fe}
+.provcsv-file-info svg{color:#818cf8}
+#provcsv-toast{background:#1e293b;color:#e5e7eb;border:1px solid rgba(255,255,255,.1)}
+#provcsv-toast.success{background:#065f46;border-color:#059669}
+#provcsv-toast.success svg{color:#34d399}
+
+/* --- Light Theme --- */
+body.provcsv-light-theme #provcsv-overlay{background:rgba(0,0,0,.3)}
+body.provcsv-light-theme #provcsv-panel{background:#ffffff;color:#1f2937;border:1px solid rgba(0,0,0,.1);box-shadow:0 25px 50px -12px rgba(0,0,0,.15)}
+body.provcsv-light-theme #provcsv-panel .provcsv-last-import{background:#eef2ff;color:#4338ca}
+body.provcsv-light-theme #provcsv-panel .provcsv-last-import svg{color:#6366f1}
+body.provcsv-light-theme .provcsv-drop{border-color:#d1d5db;background:#f9fafb}
+body.provcsv-light-theme .provcsv-drop.dragover{border-color:#6366f1;background:#eef2ff}
+body.provcsv-light-theme .provcsv-drop-icon svg{color:#9ca3af}
+body.provcsv-light-theme .provcsv-btn{background:#f3f4f6;color:#374151}
+body.provcsv-light-theme .provcsv-btn:hover{background:#e5e7eb}
+body.provcsv-light-theme .provcsv-btn.primary{background:#6366f1;color:#fff}
+body.provcsv-light-theme .provcsv-btn.primary:hover{background:#4f46e5}
+body.provcsv-light-theme .provcsv-file-info{background:#eef2ff;color:#3730a3}
+body.provcsv-light-theme .provcsv-file-info svg{color:#6366f1}
+body.provcsv-light-theme #provcsv-toast{background:#ffffff;color:#1f2937;border:1px solid rgba(0,0,0,.1)}
+body.provcsv-light-theme #provcsv-toast.success{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
+body.provcsv-light-theme #provcsv-toast.success svg{color:#10b981}
+
+/* --- Theme-Aware In-Page Styles --- */
+.provcsv-small, .provcsv-inline, .provcsv-chip { transition: color .2s, background-color .2s, border-color .2s; }
+
+/* Default (Dark Theme) */
+.provcsv-small{display:block;margin-top:2px;color:#e6edf3;font:600 12px/1.3 system-ui,Segoe UI,Roboto,Arial;opacity:.95}
+.provcsv-inline{display:inline-block;margin-left:8px;padding:2px 6px;border-radius:6px;background:#111826;border:1px solid rgba(124,147,255,.35);font:600 12px/1.2 system-ui,Segoe UI,Roboto,Arial;color:#e6edf3}
+.provcsv-chip{display:inline-flex;align-items:center;padding:2px 6px;border-radius:999px;font:600 12px/1.1 system-ui,Segoe UI,Roboto,Arial;margin-right:8px;vertical-align:baseline;white-space:nowrap;border:1px solid rgba(124,147,255,.35);background:rgba(124,147,255,.08);color:#e6edf3;}
+.provcsv-chip.warn{border-color:rgba(240,140,0,.45);background:rgba(240,140,0,.10)}
+.provcsv-chip.bad{border-color:rgba(224,49,49,.45);background:rgba(224,49,49,.10)}
+
+/* Light Theme Overrides */
+body.provcsv-light-theme .provcsv-small { color: #334155; opacity: 1; }
+body.provcsv-light-theme .provcsv-inline { background: #e2e8f0; border-color: #cbd5e1; color: #1e293b; }
+body.provcsv-light-theme .provcsv-chip { color: #1e293b; background: rgba(0,0,0,.05); border-color: rgba(0,0,0,.15); }
+body.provcsv-light-theme .provcsv-chip.warn { color: #854d0e; background: #fefce8; border-color: #facc15; }
+body.provcsv-light-theme .provcsv-chip.bad { color: #991b1b; background: #fee2e2; border-color: #fca5a5; }
+
+/* Hide helper (still force inline too) */
+.provcsv-hide{display:none!important}
