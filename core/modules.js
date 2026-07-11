@@ -14,6 +14,14 @@ const CASTO_MODULES = [
     version: '1.7.1',
     hosts: ['prod-agent.castorama.fr'],
     defaultEnabled: true
+  },
+  {
+    id: 'provisionnes',
+    name: 'Provisionnés',
+    description: "Import d'un CSV des provisionnés (mapping par EAN) : taux de provision, PV Plancher et provisionnés restants injectés sur les pages produit Com+, avec filtre « Provisionnés » dans les résultats de recherche.",
+    version: '1.4.0',
+    hosts: ['dc.kfplc.com'],
+    defaultEnabled: true
   }
 ];
 
