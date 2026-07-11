@@ -114,11 +114,27 @@ main { padding: 14px 16px; }
   color: var(--casto-text-muted);
 }
 
-.ct-footer {
-  border-top: 1px solid var(--casto-border);
-  padding: 8px 16px;
-  font-size: 0.72rem;
+/* Feuille de route : toggles grisés, non activables */
+.ct-roadmap-title { margin-top: 18px; }
+
+.ct-module.ct-ghost {
+  opacity: 0.55;
+  background: var(--casto-bg);
+  border-style: dashed;
+}
+.ct-module.ct-ghost .ct-module-name { color: var(--casto-text-muted); }
+.ct-module.ct-ghost .ct-slider { cursor: not-allowed; }
+
+.ct-soon {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: #e8eef3;
   color: var(--casto-text-muted);
-  display: flex;
-  justify-content: space-between;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
 }
