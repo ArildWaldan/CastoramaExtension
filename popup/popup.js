@@ -23,7 +23,7 @@ async function renderModules() {
 
     const meta = document.createElement('div');
     meta.className = 'ct-module-meta';
-    meta.innerHTML = mod.hosts.map((h) => `<code>${h}</code>`).join(' ');
+    meta.innerHTML = `v${mod.version} · ${mod.hosts.map((h) => `<code>${h}</code>`).join(' ')}`;
 
     info.append(name, desc, meta);
 
