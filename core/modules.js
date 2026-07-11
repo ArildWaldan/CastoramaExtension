@@ -25,6 +25,32 @@ const CASTO_MODULES = [
   }
 ];
 
+// Feuille de route : fonctionnalités à venir, affichées dans la popup sous
+// forme de toggles grisés (non activables). Passer une entrée dans
+// CASTO_MODULES (avec son content script) quand elle est développée.
+const CASTO_ROADMAP = [
+  {
+    id: 'caddies-magiques',
+    name: 'Caddies magiques',
+    description: 'Création automatique des bulletins de vente pour caddies magiques.'
+  },
+  {
+    id: 'gev',
+    name: 'G.E.V',
+    description: "Flashing des EEG pour attirer l'attention sur les anomalies d'emplacements vides."
+  },
+  {
+    id: 'operations-en-cours',
+    name: 'Opérations en cours',
+    description: "Bannières de mise en valeur d'OP en cours."
+  },
+  {
+    id: 'calculateur-cw',
+    name: 'Calculateur C.W',
+    description: 'Calcul automatique des frais de livraison Coliweb.'
+  }
+];
+
 function castoModuleById(id) {
   return CASTO_MODULES.find((m) => m.id === id) || null;
 }
