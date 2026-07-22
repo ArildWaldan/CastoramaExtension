@@ -162,7 +162,36 @@
   font-size: 17px;
   color: var(--casto-blue-deep);
   letter-spacing: 0.01em;
+  cursor: pointer;
 }
+.lc-num:hover { text-decoration: underline dotted; }
+/* Confirmation éphémère après copie du n° (classe posée 1,2 s par le JS) */
+.lc-num.lc-copied::after {
+  content: 'copié ✓';
+  margin-left: 7px;
+  font-family: "Roboto", "Segoe UI", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--casto-green);
+}
+
+/* Libellé manuel (« Litige M. Smith », …) : étiquette jaune dans l'en-tête,
+   visible carte repliée pour identifier la commande d'un coup d'œil. */
+.lc-libelle {
+  display: inline-block;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 10px;
+  border-radius: 20px;
+  background: var(--casto-yellow);
+  color: #4a3f00;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.lc-libelle:hover { background: var(--casto-yellow-dark); }
 .lc-time { font-size: 11px; color: var(--casto-text-muted); }
 .lc-sub { margin-top: 3px; font-size: 13px; color: var(--casto-text-muted); }
 .lc-sub strong { color: var(--casto-text); font-weight: 700; }
@@ -303,8 +332,8 @@
   font-size: 12px;
 }
 .lc-card-foot .lc-meta { margin-right: auto; color: var(--casto-text-muted); font-size: 11px; }
-.lc-note-btn, .lc-refresh { cursor: pointer; color: var(--casto-blue); }
-.lc-note-btn:hover, .lc-refresh:hover { color: var(--casto-blue-dark); }
+.lc-libelle-btn, .lc-note-btn, .lc-refresh { cursor: pointer; color: var(--casto-blue); }
+.lc-libelle-btn:hover, .lc-note-btn:hover, .lc-refresh:hover { color: var(--casto-blue-dark); }
 .lc-del { cursor: pointer; color: var(--casto-red); font-weight: 700; }
 .lc-del:hover { color: #8f2a20; }
 

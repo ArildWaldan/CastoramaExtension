@@ -1,4 +1,4 @@
-// Casto Tools — module « Suivi de commande » (v1.7.1)
+// Casto Tools — module « Suivi de commande » (v1.8.0)
 // Cde achat → ASN → Transit → Réception, via l'API Agent, timeline FR,
 // notifications d'évolution.
 //
@@ -649,7 +649,8 @@
                 <div class="lc-card-head">
                     <div class="lc-id">
                         <div class="lc-id-top">
-                            <span class="lc-num">${order.orderNumber}</span>
+                            <span class="lc-num" title="Cliquer pour copier">${order.orderNumber}</span>
+                            ${order.libelle ? '<span class="lc-libelle"></span>' : ''}
                             <span class="lc-time">ajouté ${formatTimestamp(order.addedTimestamp)} · vérifié ${formatTimestamp(order.lastCheckedTimestamp)}</span>
                         </div>
                         ${clientLine}
@@ -662,6 +663,7 @@
                     ${chipsHtml}
                     <div class="lc-lines">${linesHtml}</div>
                     <div class="lc-card-foot">
+                        <span class="lc-libelle-btn" title="Ajouter/modifier le libellé affiché en vue repliée">🏷 Libellé</span>
                         <span class="lc-note-btn" title="Ajouter/modifier une note">✎ Note</span>
                         <span class="lc-refresh" title="Vérifier maintenant">↻ Actualiser</span>
                         <span class="lc-del" title="Supprimer du suivi">✕ Retirer</span>
@@ -682,10 +684,31 @@
             const noteEl = card.querySelector('.lc-note-text');
             if (noteEl) noteEl.textContent = order.note;
 
+            // Le libellé aussi (texte libre → textContent). Un clic dessus
+            // ouvre l'éditeur sans replier/déplier la carte.
+            const libelleEl = card.querySelector('.lc-libelle');
+            if (libelleEl) {
+                libelleEl.textContent = order.libelle;
+                libelleEl.title = `${order.libelle} — cliquer pour modifier`;
+                libelleEl.addEventListener('click', (e) => { e.stopPropagation(); openLibelleEditor(card, order); });
+            }
+
+            // Clic sur le n° de commande : copie dans le presse-papiers, avec
+            // un « copié ✓ » éphémère, sans replier/déplier la carte.
+            const numEl = card.querySelector('.lc-num');
+            numEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(order.orderNumber).then(() => {
+                    numEl.classList.add('lc-copied');
+                    setTimeout(() => numEl.classList.remove('lc-copied'), 1200);
+                }).catch(() => {});
+            });
+
             const sapEl = card.querySelector('.lc-chip-sap strong');
             if (sapEl) sapEl.addEventListener('click', () => {
                 navigator.clipboard.writeText(order.sapNumber).then(() => alert('N° SAP copié !')).catch(() => {});
             });
+            card.querySelector('.lc-libelle-btn').addEventListener('click', () => openLibelleEditor(card, order));
             card.querySelector('.lc-note-btn').addEventListener('click', () => openNoteEditor(card, order));
             card.querySelector('.lc-del').addEventListener('click', () => deleteOrder(order.orderNumber));
             card.querySelector('.lc-refresh').addEventListener('click', () => checkOrder(order));
@@ -694,28 +717,43 @@
         });
     }
 
-    // Éditeur de note inline (post-it par commande : « recontacter avant le
-    // 15/07 », etc.). L'enregistrement passe par updateOrder → re-render.
-    function openNoteEditor(card, order) {
-        if (card.querySelector('.lc-note-editor')) {
-            card.querySelector('.lc-note-editor input').focus();
-            return;
+    // Éditeur de texte inline partagé (note et libellé). Un seul éditeur à la
+    // fois par carte. L'enregistrement passe par updateOrder → re-render.
+    function openInlineEditor(card, order, field, placeholder, maxlength) {
+        const existing = card.querySelector('.lc-note-editor');
+        if (existing) {
+            if (existing.dataset.field === field) { existing.querySelector('input').focus(); return; }
+            existing.remove();
         }
         const ed = document.createElement('div');
         ed.className = 'lc-note-editor';
+        ed.dataset.field = field;
         ed.innerHTML = `
-            <input type="text" maxlength="200" placeholder="Note (ex. : contacter le client avant le 15/07)…">
+            <input type="text" maxlength="${maxlength}">
             <button class="casto-btn casto-btn-primary">OK</button>
             <button class="casto-btn casto-btn-ghost">Annuler</button>
         `;
         const input = ed.querySelector('input');
-        input.value = order.note || '';
+        input.placeholder = placeholder;
+        input.value = order[field] || '';
+        const save = () => updateOrder(order.orderNumber, { [field]: input.value.trim() });
         const [saveBtn, cancelBtn] = ed.querySelectorAll('button');
-        saveBtn.addEventListener('click', () => updateOrder(order.orderNumber, { note: input.value.trim() }));
-        input.addEventListener('keydown', e => { if (e.key === 'Enter') updateOrder(order.orderNumber, { note: input.value.trim() }); });
+        saveBtn.addEventListener('click', save);
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
         cancelBtn.addEventListener('click', () => ed.remove());
         card.querySelector('.lc-card-head').insertAdjacentElement('afterend', ed);
         input.focus();
+    }
+
+    // Note : post-it par commande (« recontacter avant le 15/07 », etc.).
+    function openNoteEditor(card, order) {
+        openInlineEditor(card, order, 'note', 'Note (ex. : contacter le client avant le 15/07)…', 200);
+    }
+
+    // Libellé : étiquette courte affichée dans l'en-tête, visible carte
+    // repliée, pour identifier la commande d'un coup d'œil.
+    function openLibelleEditor(card, order) {
+        openInlineEditor(card, order, 'libelle', 'Libellé (ex. : Litige M. Smith)…', 60);
     }
 
     function toggleMainPopup() {
@@ -801,7 +839,7 @@
 
         setInterval(periodicCheck, CHECK_INTERVAL_MS);
         attemptInjectTrackButton();
-        console.log("[Casto Tools · Suivi] Suivi de commande v1.7.1 initialisé.");
+        console.log("[Casto Tools · Suivi] Suivi de commande v1.8.0 initialisé.");
         if (!(await hasAgentHeaders())) console.warn('[Casto Tools · Suivi] En attente de capture prod-agent. Interagissez avec l’Agent si nécessaire.');
     }
 

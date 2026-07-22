@@ -55,13 +55,15 @@ tools/
 
 ## Modules
 
-### Suivi de commande (`order-lifecycle`, v1.7.1)
+### Suivi de commande (`order-lifecycle`, v1.8.0)
 
 Suivi du cycle de vie des commandes fournisseur (**Cde achat → ASN / Cde en préparation → Transit → Réception**) via l'API Agent, timeline en français, notifications d'évolution.
 
 Depuis la v1.5.0 le suivi est **ligne par ligne** : une commande à plusieurs articles (par ex. l'un expédié par le fournisseur, l'autre bloqué en entrepôt) affiche une timeline et un badge par ligne — chaque ligne est un `<tr label="Collection via Store_<EAN>">` de la page commande, avec son propre flyout « Suivi de commande ». Le statut global de la commande suit la ligne la **moins** avancée (le goulot) et passe en « Partiel — x/y lignes reçues » dès qu'une partie est arrivée ; la commande n'est « Réceptionnée » que quand toutes ses lignes le sont. Les notifications d'évolution sont émises par ligne, avec le nom de l'article. Tant que rien n'est reçu, une commande multi-lignes affiche « x lignes — voir détail » plutôt qu'un statut global trompeur.
 
 Chaque commande suivie peut porter une **note manuelle** (« recontacter le client avant le 15/07 », …) : bouton « ✎ Note » sur la carte, affichée en post-it, stockée avec la commande dans `chrome.storage.local`.
+
+Depuis la v1.8.0, chaque commande peut aussi porter un **libellé** court (« Litige M. Smith », …) : étiquette jaune affichée à côté du numéro dans l'en-tête de la carte, donc visible **carte repliée** — on identifie la commande d'un coup d'œil. Bouton « 🏷 Libellé » dans le pied de carte, ou clic sur l'étiquette elle-même pour la modifier ; stocké avec la commande comme la note. Un clic sur le **numéro de commande** le copie dans le presse-papiers (confirmation « copié ✓ » éphémère), comme le N° SAP.
 
 Depuis la v1.4.0 le module tourne **directement sur Com+** (`prod-agent.castorama.fr`, agent-front) — là où les commandes sont gérées — et non plus sur `dc.kfplc.com` :
 - un bouton **« Suivi de commande »** est injecté dans le bloc « Commandes / N° de dossier » de la page d'accueil agent (`main.jsp`), en dernier enfant du bloc, avec les classes natives `btn btn-primary` de l'appli ;
